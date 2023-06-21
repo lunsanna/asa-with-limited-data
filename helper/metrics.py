@@ -2,6 +2,9 @@ import numpy as np
 from evaluate import Metric
 from transformers import Wav2Vec2Processor, EvalPrediction
 from typing import Dict
+import logging 
+
+logger = logging.getLogger(__name__)
 
 def compute_metrics(processor: Wav2Vec2Processor, 
                     wer_metric: Metric, 
@@ -18,6 +21,7 @@ def compute_metrics(processor: Wav2Vec2Processor,
     Returns:
         Dict: dict containing the metrics 
     """
+
     # 1. Get predictions
     pred_logits = pred.predictions
     pred_ids = np.argmax(pred_logits, axis=-1)
@@ -35,11 +39,10 @@ def compute_metrics(processor: Wav2Vec2Processor,
     cer = cer_metric.computer(predictions=pred_str, references=label_str)
 
     # 5. Print results
-    # TODO: use logger?
-
-    print("wer: ", wer, "cer", cer)
-    for prediction, reference in zip(pred_str[:10], label_str[:10]):
-        print("REFERENCE: ", reference)
-        print("PREDICTION: ", prediction)
+    logger.info("wer: ", wer, "cer", cer)
+    if logger.isEnabledFor(logging.DEBUG):
+        for prediction, reference in zip(pred_str[:10], label_str[:10]):
+            logger.debug("REFERENCE: ", reference)
+            logger.debug("PREDICTION: ", prediction)
 
     return {"wer": wer, "cer": cer}
