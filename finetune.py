@@ -31,13 +31,10 @@ from helper import (
 
 ################
 # Start here
-logger = logging.getLogger(__name__)
 
 # 1. Check device and initiate logger
 device:torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-logger.debug(f"Running on {device}")
-if device != torch.device("cuda"):
-    logger.warning("Cuda is not available!")
+logger = logging.getLogger(__name__)
 
 # 2. Check training language
 
@@ -77,7 +74,7 @@ def load_processor_and_model(path:str,
         path, 
         cache_dir=model_args.get("cache_dir", "./cache")
     )
-    logger.debug(f"Processor successfully loaded from pre-trained in {time.time() - start:.2f} s.")
+    logger.debug(f"Processor successfully loaded from pre-trained in {time.time() - start:.2f}s.")
 
     # 2. Load pre-trained model, Wav2Vec2ForCTC
     logger.debug("Start loading model from pre-trained")
@@ -88,7 +85,7 @@ def load_processor_and_model(path:str,
             pad_token_id=processor.tokenizer.pad_token_id,
             vocab_size=len(processor.tokenizer)
         )
-    logger.debug(f"Model successfully loaded from pre-trained in {time.time()-start:.2f}")
+    logger.debug(f"Model successfully loaded from pre-trained in {time.time()-start:.2f}s.")
 
     if model_args.get("freeze_feature_encoder", True):
         model.freeze_feature_encoder()
@@ -108,10 +105,11 @@ def load_data(df:pd.DataFrame,
     Returns:
         Tuple[Dataset, Dataset]: dataset for training and validation
     """
+
     # 1. Create Dataset object, split the dataset into train and validation
     train_dataset: Dataset = Dataset.from_pandas(df[df.split!=i])
     val_dataset: Dataset = Dataset.from_pandas(df[df.split==i])
-    logger.info(f"Training set: {len(train_dataset)} samples; Validation set: {len(val_dataset)} samples.")
+    logger.info(f"{len(train_dataset)} training samples, {len(val_dataset)} validation samples.")
 
     # 2. Process data with the prepare_example function 
     target_sr: int = data_args.get("target_feature_extractor_sampling_rate", 16000)
@@ -197,18 +195,22 @@ def run_train(fold:int,
         tokenizer=processor.feature_extractor
     )
 
-    logger.debug("Training start now.")
+    logger.debug("Training starts now.")
     start = time.time()
     trainer.train()
     logger.debug(f"Training done in {time.time() - start:.2f}s.")
 
     if training_args.load_best_model_at_end:
-        predictions = trainer.predict(val_dataset)
-        print(compute_metrics(predictions))
+        print("Make prediction for the validation set.")
+        predictions = trainer.predict(val_dataset[:10])
+        print(compute_metrics_partical(predictions))
 
 
 if __name__ == "__main__":
-    logger.debug(f"Training {lang} model.")
+    logger.debug(f"Running on {device}")
+    if device != torch.device("cuda"):
+        logger.warning("Cuda is not available!")
+        logger.debug(f"Training {lang} model.")
 
     # 1. Configs
     with open('config.yml', 'r') as file:
@@ -240,9 +242,16 @@ if __name__ == "__main__":
     # 3. Run k-fold 
     k = 1
     for i in range(k):
+        print(f"********** Runing fold {i} ********** ")
+
         pretrained_model_name_or_path: Optional[str] = model_args.get(PRETRAINED_KEY, None)
         assert pretrained_model_name_or_path, f"Trying to train {lang} model but {PRETRAINED_KEY} is not found in config.yml."
-        
+
+        print("LOAD PRE-TRAINED PROCESSOR AND MODEL")
         processor, model = load_processor_and_model(pretrained_model_name_or_path, model_args)
+
+        print("LOAD DATA")
         train_dataset, val_dataset = load_data(df, data_args)
+
+        print("TRAIN")
         run_train(i, processor, model, train_dataset, val_dataset, training_args)
