@@ -1,16 +1,22 @@
 import numpy as np
+from evaluate import Metric
+from transformers import Wav2Vec2Processor, EvalPrediction
+from typing import Dict
 
-def compute_metrics(processor, wer_metric, cer_metric, pred):
+def compute_metrics(processor: Wav2Vec2Processor, 
+                    wer_metric: Metric, 
+                    cer_metric: Metric, 
+                    pred:EvalPrediction) -> Dict:
     """_summary_
 
     Args:
-        processor (_type_): _description_
-        wer_metric (_type_): _description_
-        cer_metric (_type_): _description_
-        pred (_type_): _description_
+        processor (Wav2Vec2Processor): _description_
+        wer_metric (Metric): wer metric locaded from evaluate pkg
+        cer_metric (Metric): cer metric loaded from evaluate pkg
+        pred (EvalPrediction): contains predictions, labels_ids and inputs, all `np.ndarray`
 
     Returns:
-        _type_: _description_
+        Dict: dict containing the metrics 
     """
     # 1. Get predictions
     pred_logits = pred.predictions

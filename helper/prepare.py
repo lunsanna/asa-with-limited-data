@@ -1,18 +1,26 @@
 import torchaudio
+from typing import Pattern, Any, Dict
+from transformers import Wav2Vec2Processor
 
 text_updates = []
 
-def prepare_example(target_sr, vocab_cleaner, example):
-    """This function will be used to prepare each example when constructing
-    train_dataset and val_dataset
+def prepare_example(target_sr: int, 
+                    vocab_cleaner: Pattern[str], 
+                    example: Dict[str, Any]) -> Dict[str, Any]:
+    """This function will be used when construct train_dataset and val_dataset.
+    It loads the speech signals from the file paths, also save the sampling rate and 
+    duration of the speech files. 
+
+     Original columns: file_path, split, normalised text
+     Final columns: text, speech, duration_seconds, sampling_rate
 
     Args:
-        example (Dataset.LazyRow): one example from the dataset
+        example (Dict[str, Any]): one example from the dataset
         target_sr (int): target sample rate defined in config.yml
         vocab_cleaner (Pattern[str]): a regular expression object 
 
     Returns:
-        Dataset.Lazy: one example ready for training
+        Dict[str, Any]: one example ready for training
     """
     # Load speech from file path
     example["speech"], example["sampling_rate"] = torchaudio.load(example["file_path"])
@@ -33,16 +41,23 @@ def prepare_example(target_sr, vocab_cleaner, example):
 
     return example
 
-def prepare_dataset(processor, target_sr, batch):
-    """_summary_
+def prepare_dataset(processor:Wav2Vec2Processor, 
+                    target_sr:int, 
+                    batch:Dict[str, Any]) -> Dict[str, Any]:
+    """This function will be used to prepare train_dataset and val_dataset. 
+    It uses the processor to extract features from speech signals, and uses 
+    the tokenizer to convert the text to labels. 
+
+    Original columns: text, speech, duration_seconds, sampling_rate
+    Final columns: speech, text, sampling_rate, duration_seconds, input_values, labels
 
     Args:
-        processor (_type_): _description_
-        target_sr (_type_): _description_
-        batch (_type_): _description_
+        processor (Wav2Vec2Processor): 
+        target_sr (int): _description_
+        batch (Dict[str, Any]): _description_
 
     Returns:
-        _type_: _description_
+        Dict[str, Any]: _description_
     """
     # check sr
     sr = set(batch["sampling_rate"])

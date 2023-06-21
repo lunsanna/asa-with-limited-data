@@ -1,12 +1,14 @@
 from .prepare import prepare_example, prepare_dataset
 from .metrics import compute_metrics
 from .classes import DataCollatorCTCWithPadding, CTCTrainer
+from .log import configure_logger
 
 __all__ = [
     'compute_metrics',
     'prepare_example', 
     'prepare_dataset',
     'DataCollatorCTCWithPadding', 
-    'CTCTrainer'
+    'CTCTrainer', 
+    'configure_logger'
     
 ]
