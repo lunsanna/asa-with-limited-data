@@ -2,7 +2,7 @@ import yaml
 import re
 import logging
 from functools import partial
-# import multiprocessing
+import multiprocessing
 import time 
 
 import pandas as pd
@@ -26,7 +26,8 @@ from helper import (
     compute_metrics, 
     DataCollatorCTCWithPadding, 
     CTCTrainer,
-    configure_logger)
+    configure_logger, 
+    print_time)
 
 
 ################
@@ -68,16 +69,14 @@ def load_processor_and_model(path:str,
         Tuple[Wav2Vec2Procesor, Wav2Vec2ForCTC]: processor and model for training
     """
     # 1. Load pre-trained processor, Wav2Vec2Processor
-    logger.debug("Start loading processor from pre-trained.")
     start = time.time()
     processor = Wav2Vec2Processor.from_pretrained(
         path, 
         cache_dir=model_args.get("cache_dir", "./cache")
     )
-    logger.debug(f"Processor successfully loaded from pre-trained in {time.time() - start:.2f}s.")
+    logger.debug(f"Pre-trained processor loaded. Time taken: {print_time(start)}.")
 
     # 2. Load pre-trained model, Wav2Vec2ForCTC
-    logger.debug("Start loading model from pre-trained")
     start = time.time()
     model = Wav2Vec2ForCTC.from_pretrained(
             path, 
@@ -85,7 +84,7 @@ def load_processor_and_model(path:str,
             pad_token_id=processor.tokenizer.pad_token_id,
             vocab_size=len(processor.tokenizer)
         )
-    logger.debug(f"Model successfully loaded from pre-trained in {time.time()-start:.2f}s.")
+    logger.debug(f"Pre-trained model loaded. Time taken: {print_time(start)}.")
 
     if model_args.get("freeze_feature_encoder", True):
         model.freeze_feature_encoder()
@@ -109,7 +108,8 @@ def load_data(df:pd.DataFrame,
     # 1. Create Dataset object, split the dataset into train and validation
     train_dataset: Dataset = Dataset.from_pandas(df[df.split!=i])
     val_dataset: Dataset = Dataset.from_pandas(df[df.split==i])
-    logger.info(f"{len(train_dataset)} training samples, {len(val_dataset)} validation samples.")
+    logger.info(
+        f"{len(train_dataset)} training samples, {len(val_dataset)} validation samples.")
 
     # 2. Process data with the prepare_example function 
     target_sr: int = data_args.get("target_feature_extractor_sampling_rate", 16000)
@@ -120,42 +120,40 @@ def load_data(df:pd.DataFrame,
     prepare_example_partial = partial(prepare_example, target_sr, text_cleaner_re)
 
     # -- dataset columns after this step: speech, text, sampling_rate, duration_seconds
-    logger.debug("Training set: start loading speech files from paths.")
     start = time.time()
     train_dataset = train_dataset.map(
         prepare_example_partial, 
         remove_columns=["file_path","split"])
-    logger.debug(f"Training set: successfully processed in {time.time() - start:.2f}s.")
+    logger.debug(
+        f"Training set: speech signal successfully loaded. Time taken: {print_time(start)}.")
 
-    logger.debug("Validation set: start loading speech files from paths.")
     start = time.time()
     val_dataset = val_dataset.map(prepare_example_partial, remove_columns=["file_path", "split"])
-    logger.debug(f"Validation set: successfully processed in {time.time() - start:.2f}s.")
+    logger.debug(
+        f"Validation set: speech signal successfully loaded. Time taken: {print_time(start)}.")
 
     # 3. Process data with the prepare_dataset function
     # -- Pass the first two arguments to the function
     prepare_dataset_partial = partial(prepare_dataset, processor, target_sr)
 
     # -- dataset columns after this step: speech, text, sampling_rate, duration_seconds, input_values, labels
-    logger.debug(f"Training set: start extracting features and labels.")
     start = time.time()
     train_dataset:Dataset = train_dataset.map(
         prepare_dataset_partial,
+        num_proc=4,                 # TODO
         batched=True,
-        batch_size=training_args.get("per_device_train_batch_size", 1),
-        num_proc=6 # TODO
-    )
-    logger.debug(f"Training set: successfully processed in {time.time() - start:.2f}s.")
+        batch_size=training_args.get("per_device_train_batch_size", 1),)
+    logger.debug(
+        f"Training set: features and labels sucessfully extracted. Time taken: {print_time(start)}.")
     
-    logger.debug("Validation set: start extract features and labels.")
     start = time.time()
     val_dataset:Dataset = val_dataset.map(
         prepare_dataset_partial, 
+        num_proc=4,                 # TODO
         batched=True,
-        batch_size=training_args.get("per_device_eval_batch_size", 1),
-        num_proc=6 # TODO
-    )
-    logger.debug(f"Validation set: successfully processed in {time.time() - start:.2f}s.")
+        batch_size=training_args.get("per_device_eval_batch_size", 1))
+    logger.debug(
+        f"Validation set: features and labels sucessfully extracted. Time taken: {print_time(start)}.")
 
     return train_dataset, val_dataset
 
@@ -198,7 +196,7 @@ def run_train(fold:int,
     logger.debug("Training starts now.")
     start = time.time()
     trainer.train()
-    logger.debug(f"Training done in {time.time() - start:.2f}s.")
+    logger.debug(f"Training done in {print_time(start)}.")
 
     if training_args.load_best_model_at_end:
         print("Make prediction for the validation set.")
@@ -207,11 +205,6 @@ def run_train(fold:int,
 
 
 if __name__ == "__main__":
-    logger.debug(f"Running on {device}")
-    if device != torch.device("cuda"):
-        logger.warning("Cuda is not available!")
-        logger.debug(f"Training {lang} model.")
-
     # 1. Configs
     with open('config.yml', 'r') as file:
         train_config = yaml.safe_load(file)
@@ -224,9 +217,16 @@ if __name__ == "__main__":
     if device==torch.device("cpu"):
         training_args["fp16"] = False
 
-    # -- configure logger used for printouts
+    # -- configure logger, log cuda info
     verbose_logging: bool = model_args.get("verbose_logging", True)
     configure_logger(verbose_logging)
+
+    logger.debug(f"Running on {device}")
+    if device != torch.device("cuda"):
+        logger.warning("Cuda is not available!")
+        logger.debug(f"Training {lang} model.")
+    else:
+        logger.debug(f"Working on {torch.cuda.device_count()} cudas.")
 
     # 2. Load csv file containing data summary
     # -- columns: file_path, split, normalised transcripts 
@@ -234,9 +234,14 @@ if __name__ == "__main__":
     csv_path: Optional[str] = data_args.get(CSV_KEY, None)
     assert csv_path, f"Trying to train {lang} model but {CSV_KEY} is not defined in config.yml."
 
-    df = pd.read_csv(csv_path, 
-                 encoding="utf-8",
-                 usecols=["recording_path", "transcript_normalized", "split"])
+    try:
+        df = pd.read_csv(csv_path, 
+                    encoding="utf-8",
+                    usecols=["recording_path", "transcript_normalized", "split"])
+    except:
+        FileNotFoundError(
+            f"Please copy the csv file to this directory from /scratch/work/lunt1/wav2vec2-finetune/{csv_path}")
+
     df.columns = ["file_path", "split", "text"]
 
     # 3. Run k-fold 
