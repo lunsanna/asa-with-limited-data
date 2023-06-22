@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from .prepare import prepare_example, prepare_dataset
 from .metrics import compute_metrics
 from .classes import DataCollatorCTCWithPadding, CTCTrainer

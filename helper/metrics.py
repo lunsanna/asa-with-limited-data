@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import numpy as np
 from evaluate import Metric
 from transformers import Wav2Vec2Processor, EvalPrediction

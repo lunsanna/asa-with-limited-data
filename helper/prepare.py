@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import torchaudio
 from typing import Pattern, Any, Dict
 from transformers import Wav2Vec2Processor
