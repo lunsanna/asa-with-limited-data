@@ -21,9 +21,9 @@ cp /scratch/work/lunt1/wav2vec2-finetune/swedish_df.csv .
 conda env create --file environment.yml
 ```
 4. Run the code on Triton
+- Check `config.yml` to see if all parameters look good. 
+- Check `run.sh` and set `--lang` to the desired language (either `fi` or `sv`).
+- And then run: 
 ```
-# fi model 
-sbatch run.sh --lang=fi
-# sv model 
-sbatch run.sh --lang=sv
+sbatch run.sh
 ```
