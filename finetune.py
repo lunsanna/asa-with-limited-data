@@ -1,9 +1,12 @@
+#!/usr/bin/env python3
 import yaml
 import re
 import logging
 from functools import partial
 import multiprocessing
 import time 
+import sys
+import argparse
 
 import pandas as pd
 import torch
@@ -29,69 +32,39 @@ from helper import (
     configure_logger, 
     print_time)
 
-
-################
-# Start here
-
-# 1. Check device and initiate logger
+# Check device and initiate logger
 device:torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logger = logging.getLogger(__name__)
 
-# 2. Check training language
-
-# TODO: use HfArgumentParser for this
-lang: Literal["fi", "sv"] = "fi"
-
-if lang not in ["fi","sv"]:
-    raise ValueError(f"Lang must be either fi or sv, got {lang}")
-
-# 3. Definte constants
-# Keys used to fetch the path of the csv file and the pretrained model from config.yml
-if lang == "fi":
-    CSV_KEY: str = "csv_fi" 
-    PRETRAINED_KEY: str = "fi_pretrained"
-elif lang == "sv":
-    CSV_KEY: str = "csv_sv"
-    PRETRAINED_KEY: str = "sv_pretrained"
-
 ################
-# functions used in main()
+# functions related to data handling
 
-def load_processor_and_model(path:str, 
-                             model_args:Dict[str, Any]) -> Tuple[Wav2Vec2Processor, Wav2Vec2ForCTC]:
-    """Loads the processor and model from pre-trained
+def get_df(lang:Literal["fi","sv"], data_args:Dict[str, Any]) -> pd.DataFrame:
+    """Load csv file based on lang
 
     Args:
-        path (str): path to the pre-trained model
-        model_args (Dict[str, Any]): model arguments loaded from config.yml
+        lang (str): either fi or sv
+        data_args (Dict[str, Any]): data args defined in config.yml
 
     Returns:
-        Tuple[Wav2Vec2Procesor, Wav2Vec2ForCTC]: processor and model for training
+        pd.DataFrame: summary of the training and val data
     """
-    # 1. Load pre-trained processor, Wav2Vec2Processor
-    start = time.time()
-    processor = Wav2Vec2Processor.from_pretrained(
-        path, 
-        cache_dir=model_args.get("cache_dir", "./cache")
-    )
-    logger.debug(f"Pre-trained processor loaded. Time taken: {print_time(start)}.")
+    assert lang in ["fi", "sv"], f"Expect lang to be either fi or sv, got {lang}"
+    csv_key = "csv_fi" if lang=="fi" else "csv_sv" 
 
-    # 2. Load pre-trained model, Wav2Vec2ForCTC
-    start = time.time()
-    model = Wav2Vec2ForCTC.from_pretrained(
-            path, 
-            cache_dir=model_args.get("cache_dir", "./cache"), 
-            pad_token_id=processor.tokenizer.pad_token_id,
-            vocab_size=len(processor.tokenizer)
-        )
-    logger.debug(f"Pre-trained model loaded. Time taken: {print_time(start)}.")
+    csv_path: Optional[str] = data_args.get(csv_key, None)
+    assert csv_path, f"Trying to train {lang} model but {csv_key} is not defined in config.yml."
 
-    if model_args.get("freeze_feature_encoder", True):
-        model.freeze_feature_encoder()
-    
-    model.to(device)
+    try:
+        df = pd.read_csv(csv_path, 
+                    encoding="utf-8",
+                    usecols=["recording_path", "transcript_normalized", "split"])
+    except:
+        FileNotFoundError(
+            f"Please copy the csv file to this directory from /scratch/work/lunt1/wav2vec2-finetune/{csv_path}")
 
-    return processor, model
+    df.columns = ["file_path", "split", "text"]    
+    return df
 
 def load_data(df:pd.DataFrame, 
               data_args:Dict[str,Any]) -> Tuple[Dataset, Dataset]:
@@ -124,13 +97,11 @@ def load_data(df:pd.DataFrame,
     train_dataset = train_dataset.map(
         prepare_example_partial, 
         remove_columns=["file_path","split"])
-    logger.debug(
-        f"Training set: speech signal successfully loaded. Time taken: {print_time(start)}.")
+    logger.debug(f"Training set: speech signal successfully loaded. Time taken: {print_time(start)}.")
 
     start = time.time()
     val_dataset = val_dataset.map(prepare_example_partial, remove_columns=["file_path", "split"])
-    logger.debug(
-        f"Validation set: speech signal successfully loaded. Time taken: {print_time(start)}.")
+    logger.debug(f"Validation set: speech signal successfully loaded. Time taken: {print_time(start)}.")
 
     # 3. Process data with the prepare_dataset function
     # -- Pass the first two arguments to the function
@@ -138,24 +109,87 @@ def load_data(df:pd.DataFrame,
 
     # -- dataset columns after this step: speech, text, sampling_rate, duration_seconds, input_values, labels
     start = time.time()
+    num_proc = 6 if multiprocessing.cpu_count() >=6 else multiprocessing.cpu_count()
     train_dataset:Dataset = train_dataset.map(
         prepare_dataset_partial,
-        num_proc=4,                 # TODO
+        num_proc=num_proc,
         batched=True,
         batch_size=training_args.get("per_device_train_batch_size", 1),)
-    logger.debug(
-        f"Training set: features and labels sucessfully extracted. Time taken: {print_time(start)}.")
+    logger.debug("Training set: features and labels sucessfully extracted." 
+                 f"Time taken: {print_time(start)}. Size: {sys.getsizeof(train_dataset)}.")
     
     start = time.time()
     val_dataset:Dataset = val_dataset.map(
         prepare_dataset_partial, 
-        num_proc=4,                 # TODO
+        num_proc=num_proc, 
         batched=True,
         batch_size=training_args.get("per_device_eval_batch_size", 1))
-    logger.debug(
-        f"Validation set: features and labels sucessfully extracted. Time taken: {print_time(start)}.")
+    logger.debug("Validation set: features and labels sucessfully extracted." 
+                 f"Time taken: {print_time(start)}. Size: {sys.getsizeof(val_dataset)}.")
 
     return train_dataset, val_dataset
+
+################
+# functions related to processor and model
+
+def get_pretrained_name_or_path(lang:Literal["fi", "sv"], model_args:Dict[str, Any]) -> str:
+    """Fetch the name or path of the pretrained model based on lang
+
+    Args:
+        lang (str): either fi or sv
+        model_args (Dict[str, Any]): model args defined in config.yml
+
+    Returns:
+        str: the name or path to the pre-trained model
+    """
+    assert lang in ["fi", "sv"], f"Expect lang to be either fi or sv, got {lang}"
+    key = "fi_pretrained" if lang=="fi" else "sv_pretrained"
+
+    pretrained_name_or_path: Optional[str] = model_args.get(key, None)
+    assert pretrained_name_or_path, f"Trying to train {lang} model but {key} is not found in config.yml."
+    return pretrained_name_or_path
+
+def load_processor_and_model(path:str, 
+                             model_args:Dict[str, Any]
+                             ) -> Tuple[Wav2Vec2Processor, Wav2Vec2ForCTC]:
+    """Loads the processor and model from pre-trained
+
+    Args:
+        path (str): path to the pre-trained model
+        model_args (Dict[str, Any]): model arguments loaded from config.yml
+
+    Returns:
+        Tuple[Wav2Vec2Procesor, Wav2Vec2ForCTC]: processor and model for training
+    """
+    # 1. Load pre-trained processor, Wav2Vec2Processor
+    start = time.time()
+    processor = Wav2Vec2Processor.from_pretrained(
+        path, 
+        cache_dir=model_args.get("cache_dir", "./cache")
+    )
+    logger.debug("Pre-trained processor loaded." 
+                 f"Time taken: {print_time(start)}. Size: {sys.getsizeof(processor)}")
+
+    # 2. Load pre-trained model, Wav2Vec2ForCTC
+    start = time.time()
+    model = Wav2Vec2ForCTC.from_pretrained(
+            path, 
+            cache_dir=model_args.get("cache_dir", "./cache"), 
+            pad_token_id=processor.tokenizer.pad_token_id,
+            vocab_size=len(processor.tokenizer)
+        )
+    logger.debug("Pre-trained model loaded." 
+                 f"Time taken: {print_time(start)}. Size: {sys.getsizeof(model)}.")
+
+    if model_args.get("freeze_feature_encoder", True):
+        model.freeze_feature_encoder()
+    
+    model.to(device)
+
+    return processor, model
+
+################
+# function related to training
 
 def run_train(fold:int, 
               processor: Wav2Vec2Processor, 
@@ -205,6 +239,15 @@ def run_train(fold:int,
 
 
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--lang", type=str, help="Choose training in either fi or sv.", default="sv")
+    args = parser.parse_args()
+
+    lang = args.lang
+    if lang not in ["fi","sv"]:
+        raise ValueError(f"Lang must be either fi or sv, got {lang}.")
+
     # 1. Configs
     with open('config.yml', 'r') as file:
         train_config = yaml.safe_load(file)
@@ -230,30 +273,18 @@ if __name__ == "__main__":
 
     # 2. Load csv file containing data summary
     # -- columns: file_path, split, normalised transcripts 
+    df:pd.DataFrame = get_df(lang, data_args)
+    
+    # 3. Fetch the path of the pre-trained model 
+    pretrained_name_or_path:str = get_pretrained_name_or_path(lang, model_args)
 
-    csv_path: Optional[str] = data_args.get(CSV_KEY, None)
-    assert csv_path, f"Trying to train {lang} model but {CSV_KEY} is not defined in config.yml."
-
-    try:
-        df = pd.read_csv(csv_path, 
-                    encoding="utf-8",
-                    usecols=["recording_path", "transcript_normalized", "split"])
-    except:
-        FileNotFoundError(
-            f"Please copy the csv file to this directory from /scratch/work/lunt1/wav2vec2-finetune/{csv_path}")
-
-    df.columns = ["file_path", "split", "text"]
-
-    # 3. Run k-fold 
+    # 4. Run k-fold 
     k = 1
     for i in range(k):
         print(f"********** Runing fold {i} ********** ")
 
-        pretrained_model_name_or_path: Optional[str] = model_args.get(PRETRAINED_KEY, None)
-        assert pretrained_model_name_or_path, f"Trying to train {lang} model but {PRETRAINED_KEY} is not found in config.yml."
-
         print("LOAD PRE-TRAINED PROCESSOR AND MODEL")
-        processor, model = load_processor_and_model(pretrained_model_name_or_path, model_args)
+        processor, model = load_processor_and_model(pretrained_name_or_path, model_args)
 
         print("LOAD DATA")
         train_dataset, val_dataset = load_data(df, data_args)

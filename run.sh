@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --gres=gpu:4
-#SBATCH --time=00:45:00
+#SBATCH --cpus-per-task=6
+#SBATCH --time=00:00:00
 #SBATCH -J digitala_fi
 #SBATCH --mem=20G
 #SBATCH --output=output.out
@@ -9,4 +10,4 @@
 module load anaconda
 source activate w2v2
 
-srun python -u finetune.py
+srun python -u finetune.py --lang=fi

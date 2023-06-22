@@ -22,5 +22,8 @@ conda env create --file environment.yml
 ```
 4. Run the code on Triton
 ```
-sbatch run.sh
+# fi model 
+sbatch run.sh --lang=fi
+# sv model 
+sbatch run.sh --lang=sv
 ```
