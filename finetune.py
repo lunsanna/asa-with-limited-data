@@ -5,8 +5,8 @@ import logging
 from functools import partial
 import multiprocessing
 import time 
-import sys
 import argparse
+import os 
 
 import pandas as pd
 import torch
@@ -30,7 +30,8 @@ from helper import (
     DataCollatorCTCWithPadding, 
     CTCTrainer,
     configure_logger, 
-    print_time)
+    print_time_size, 
+    print_memory_usage)
 
 # Check device and initiate logger
 device:torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -81,6 +82,8 @@ def load_data(df:pd.DataFrame,
     # 1. Create Dataset object, split the dataset into train and validation
     train_dataset: Dataset = Dataset.from_pandas(df[df.split!=i])
     val_dataset: Dataset = Dataset.from_pandas(df[df.split==i])
+    train_dataset.set_format("pt")
+    val_dataset.set_format("pt")
     logger.info(
         f"{len(train_dataset)} training samples, {len(val_dataset)} validation samples.")
 
@@ -97,11 +100,13 @@ def load_data(df:pd.DataFrame,
     train_dataset = train_dataset.map(
         prepare_example_partial, 
         remove_columns=["file_path","split"])
-    logger.debug(f"Training set: speech signal successfully loaded. Time taken: {print_time(start)}.")
+    logger.debug(f"Training set: speech successfully loaded. {print_time_size(start, train_dataset)}")
+    logger.debug(f"{print_memory_usage()}")
 
     start = time.time()
     val_dataset = val_dataset.map(prepare_example_partial, remove_columns=["file_path", "split"])
-    logger.debug(f"Validation set: speech signal successfully loaded. Time taken: {print_time(start)}.")
+    logger.debug(f"Validation set: speech successfully loaded. {print_time_size(start, val_dataset)}")
+    logger.debug(f"{print_memory_usage()}")
 
     # 3. Process data with the prepare_dataset function
     # -- Pass the first two arguments to the function
@@ -115,8 +120,8 @@ def load_data(df:pd.DataFrame,
         num_proc=num_proc,
         batched=True,
         batch_size=training_args.get("per_device_train_batch_size", 1),)
-    logger.debug("Training set: features and labels sucessfully extracted." 
-                 f"Time taken: {print_time(start)}. Size: {sys.getsizeof(train_dataset)}.")
+    logger.debug(f"Training set: features and labels sucessfully extracted. {print_time_size(start, train_dataset)}")
+    logger.debug(f"{print_memory_usage()}")
     
     start = time.time()
     val_dataset:Dataset = val_dataset.map(
@@ -124,8 +129,8 @@ def load_data(df:pd.DataFrame,
         num_proc=num_proc, 
         batched=True,
         batch_size=training_args.get("per_device_eval_batch_size", 1))
-    logger.debug("Validation set: features and labels sucessfully extracted." 
-                 f"Time taken: {print_time(start)}. Size: {sys.getsizeof(val_dataset)}.")
+    logger.debug(f"Validation set: features and labels sucessfully extracted. {print_time_size(start, val_dataset)}")
+    logger.debug(f"{print_memory_usage()}")
 
     return train_dataset, val_dataset
 
@@ -167,8 +172,8 @@ def load_processor_and_model(path:str,
         path, 
         cache_dir=model_args.get("cache_dir", "./cache")
     )
-    logger.debug("Pre-trained processor loaded." 
-                 f"Time taken: {print_time(start)}. Size: {sys.getsizeof(processor)}")
+    logger.debug(f"Pre-trained processor loaded. {print_time_size(start, processor)}")
+    logger.debug(f"{print_memory_usage()}")
 
     # 2. Load pre-trained model, Wav2Vec2ForCTC
     start = time.time()
@@ -178,13 +183,11 @@ def load_processor_and_model(path:str,
             pad_token_id=processor.tokenizer.pad_token_id,
             vocab_size=len(processor.tokenizer)
         )
-    logger.debug("Pre-trained model loaded." 
-                 f"Time taken: {print_time(start)}. Size: {sys.getsizeof(model)}.")
+    logger.debug(f"Pre-trained model loaded. {print_time_size(start, model)}")
+    logger.debug(f"{print_memory_usage()}")
 
     if model_args.get("freeze_feature_encoder", True):
         model.freeze_feature_encoder()
-    
-    model.to(device)
 
     return processor, model
 
@@ -227,14 +230,15 @@ def run_train(fold:int,
         tokenizer=processor.feature_extractor
     )
 
-    logger.debug("Training starts now.")
+    logger.debug(f"Training starts now.\n{print_memory_usage()}")
+    torch.cuda.empty_cache()
     start = time.time()
     trainer.train()
-    logger.debug(f"Training done in {print_time(start)}.")
+    logger.debug(f"Training completed in {print_time(start)}.")
 
     if training_args.load_best_model_at_end:
         print("Make prediction for the validation set.")
-        predictions = trainer.predict(val_dataset[:10])
+        predictions = trainer.predict(val_dataset)
         print(compute_metrics_partical(predictions))
 
 
@@ -255,10 +259,7 @@ if __name__ == "__main__":
     data_args: Dict[str, Union[bool, str, int]] = train_config["data_args"]
     model_args: Dict[str, Union[bool, str, int]] = train_config["model_args"]
     training_args: Dict[str, Union[bool, str, int]] = train_config["training_args"]
-
-    # -- mix precision training only avaible for cuda
-    if device==torch.device("cpu"):
-        training_args["fp16"] = False
+    training_args["local_rank"] = int(os.environ["LOCAL_RANK"])
 
     # -- configure logger, log cuda info
     verbose_logging: bool = model_args.get("verbose_logging", True)
@@ -266,10 +267,12 @@ if __name__ == "__main__":
 
     logger.debug(f"Running on {device}")
     if device != torch.device("cuda"):
+        # mix precision training only avaible for cuda
+        training_args["fp16"] = False
         logger.warning("Cuda is not available!")
         logger.debug(f"Training {lang} model.")
     else:
-        logger.debug(f"Working on {torch.cuda.device_count()} cudas.")
+        logger.debug(f"Cuda count: {torch.cuda.device_count()}")
 
     # 2. Load csv file containing data summary
     # -- columns: file_path, split, normalised transcripts 
