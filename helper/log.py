@@ -6,7 +6,8 @@ import psutil
 import os 
 import sys
 from typing import Any
-from torch.cuda import memory_allocated, max_memory_allocated, device_count
+from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
+from torch.cuda import device_count
 
 def configure_logger(verbose:bool) -> None:
     """
@@ -53,10 +54,12 @@ def print_memory_usage():
 
     n_device = device_count()
     gpu_memory = ""
-    
-    for i in range(n_device):
-        allocated = memory_allocated(i)/gb_factor
-        max_allocated = max_memory_allocated(i)/gb_factor
-        gpu_memory += f"Cuda {i}: memory acclocated: {allocated:.2f}/{max_allocated:.2f}\n"
+    if n_device > 0:
+        nvmlInit()
+        
+        for i in range(n_device):
+            handle = nvmlDeviceGetHandleByIndex(i)
+            info = nvmlDeviceGetMemoryInfo(handle)
+            gpu_memory += f"Cuda {i}: memory acclocated: {info.used//gb_factor} G.\n"
 
     return f"CPU mem usage: {cpu_memory.rss/gb_factor:.2f}G\n{gpu_memory}"
