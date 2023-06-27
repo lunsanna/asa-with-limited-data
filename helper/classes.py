@@ -46,7 +46,6 @@ class DataCollatorCTCWithPadding:
                                    pad_to_multiple_of=self.pad_to_multiple_of,
                                    return_tensors="pt")  # return PyTorch torhc.Tensor objects
 
-        # with self.processor.as_target_processor():
         labels_batch = self.processor.pad(labels=label_features,
                                           padding=self.padding,
                                           max_length=self.max_length_labels,

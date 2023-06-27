@@ -13,11 +13,14 @@ import torch
 import evaluate
 
 from datasets import Dataset
+from accelerate import Accelerator
+from torch.utils.data.dataloader import DataLoader
 from transformers import (
     Wav2Vec2ForCTC, 
     Wav2Vec2Processor, 
     TrainingArguments, 
-    EvalPrediction)
+    EvalPrediction, 
+    AdamW)
 
 # For typing 
 from typing import Literal, Optional, Pattern, Union, Dict, Tuple, Any, Callable
@@ -67,8 +70,11 @@ def get_df(lang:Literal["fi","sv"], data_args:Dict[str, Any]) -> pd.DataFrame:
     df.columns = ["file_path", "split", "text"]    
     return df
 
-def load_data(df:pd.DataFrame, 
-              data_args:Dict[str,Any]) -> Tuple[Dataset, Dataset]:
+def load_data(fold:int, 
+              df:pd.DataFrame, 
+              data_args:Dict[str,Any], 
+              processor:Wav2Vec2Processor, 
+              training_args:Dict[str,Any]) -> Tuple[Dataset, Dataset]:
     """Split data into train and val, then process data for training
 
     Args:
@@ -80,8 +86,8 @@ def load_data(df:pd.DataFrame,
     """
 
     # 1. Create Dataset object, split the dataset into train and validation
-    train_dataset: Dataset = Dataset.from_pandas(df[df.split!=i])
-    val_dataset: Dataset = Dataset.from_pandas(df[df.split==i])
+    train_dataset: Dataset = Dataset.from_pandas(df[df.split!=fold])
+    val_dataset: Dataset = Dataset.from_pandas(df[df.split==fold])
     train_dataset.set_format("pt")
     val_dataset.set_format("pt")
     logger.info(
@@ -119,7 +125,8 @@ def load_data(df:pd.DataFrame,
         prepare_dataset_partial,
         num_proc=num_proc,
         batched=True,
-        batch_size=training_args.get("per_device_train_batch_size", 1),)
+        batch_size=training_args.get("per_device_train_batch_size", 1),
+        remove_columns=["speech", "text", "sampling_rate", "duration_seconds"])
     logger.debug(f"Training set: features and labels sucessfully extracted. {print_time_size(start, train_dataset)}")
     logger.debug(f"{print_memory_usage()}")
     
@@ -128,7 +135,8 @@ def load_data(df:pd.DataFrame,
         prepare_dataset_partial, 
         num_proc=num_proc, 
         batched=True,
-        batch_size=training_args.get("per_device_eval_batch_size", 1))
+        batch_size=training_args.get("per_device_eval_batch_size", 1),
+        remove_columns=["speech", "text", "sampling_rate", "duration_seconds"])
     logger.debug(f"Validation set: features and labels sucessfully extracted. {print_time_size(start, val_dataset)}")
     logger.debug(f"{print_memory_usage()}")
 
@@ -210,6 +218,10 @@ def run_train(fold:int,
         val_dataset (Dataset)
         training_args (Dict[str, Any]): args used to create TrainingArgument
     """
+    training_args["output_dir"] = f"output_fold_{fold}"
+    training_args = TrainingArguments(**training_args)
+
+    accelerator = Accelerator(mixed_precision='fp16') if training_args.fp16 else Accelerator()
 
     data_collator = DataCollatorCTCWithPadding(processor=processor, padding=True)
 
@@ -217,29 +229,61 @@ def run_train(fold:int,
     cer_metric: Metric = evaluate.load("cer")
     compute_metrics_partical:Callable[[EvalPrediction], Dict] = partial(compute_metrics, processor, wer_metric, cer_metric)
 
-    training_args["output_dir"] = f"output_fold_{fold}"
-    training_args = TrainingArguments(**training_args)
-
-    trainer = CTCTrainer(
-        model=model,
-        data_collator=data_collator, 
-        args=training_args,
-        compute_metrics=compute_metrics_partical, 
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        tokenizer=processor.feature_extractor
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=training_args.per_device_train_batch_size, 
+        collate_fn=data_collator, 
+        shuffle=True)
+    
+    val_loader = DataLoader(
+        val_dataset, 
+        batch_size=training_args.per_device_eval_batch_size,
+        collate_fn=data_collator, 
+        shuffle=True
     )
+    if training_args.gradient_checkpointing:
+        model.gradient_checkpointing_enable()
+    optimizer = AdamW(model.parameters(), lr=training_args.learning_rate)
+    model, optimizer, train_loader = accelerator.prepare(model, optimizer, train_loader)
 
+    ## Training loop 
     logger.debug(f"Training starts now.\n{print_memory_usage()}")
-    torch.cuda.empty_cache()
     start = time.time()
-    trainer.train()
-    logger.debug(f"Training completed in {print_time(start)}.")
+    
+    for epoch in range(training_args.num_train_epochs):
+        for step, batch in enumerate(train_loader):
+            model.train()
+            loss = model(input_values=batch.input_values.squeeze(0), 
+                         attention_mask=batch.attention_mask, 
+                         labels=batch.labels).loss
+            loss = loss/training_args.gradient_accumulation_steps
+            accelerator.backward(loss)
+            logger.debug(print_memory_usage())
+            if step % training_args.gradient_accumulation_steps == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+            if step % 1 == 0:
+                model.eval()
+                eval_example = next(iter(val_loader))
+                print(eval_example)
+                with torch.no_grad():
+                    preds = model(eval_example.input_values.squeeze(0))
+                print(preds)
+                # compute_metrics_partical(preds)
+                
+    model.save_pretrained(training_args.output_dir)
+    processor.save_pretrained(training_args.output_dir)
 
-    if training_args.load_best_model_at_end:
-        print("Make prediction for the validation set.")
-        predictions = trainer.predict(val_dataset)
-        print(compute_metrics_partical(predictions))
+    logger.debug(f"Training completed in {print_time_size(start)}.")
+
+    
+
+    # if training_args.load_best_model_at_end:
+    #     print("Make prediction for the validation set.")
+    #     predictions = trainer.predict(val_dataset)
+    #     print(compute_metrics_partical(predictions))
+
+    
 
 
 if __name__ == "__main__":
@@ -290,7 +334,7 @@ if __name__ == "__main__":
         processor, model = load_processor_and_model(pretrained_name_or_path, model_args)
 
         print("LOAD DATA")
-        train_dataset, val_dataset = load_data(df, data_args)
+        train_dataset, val_dataset = load_data(i, df[:20], data_args, processor, training_args)
 
         print("TRAIN")
         run_train(i, processor, model, train_dataset, val_dataset, training_args)

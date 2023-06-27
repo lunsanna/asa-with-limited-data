@@ -1,13 +1,14 @@
 #!/bin/bash
 #SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=6
-#SBATCH --time=06:00:00
+#SBATCH --time=01:00:00
 #SBATCH -J digitala_fi
-#SBATCH --mem=30G
+#SBATCH --mem=10G
 #SBATCH --output=output.out
 #SBATCH --error=errors.err
 
 module load anaconda
+module load cuda 
 source activate w2v2
 
 srun torchrun finetune.py --lang=fi
