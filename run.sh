@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
-#SBATCH --time=06:00:00
+#SBATCH --time=01:00:00
 #SBATCH -J digitala_fi
-#SBATCH --mem=30G
+#SBATCH --mem=20G
 #SBATCH --output=output.out
 #SBATCH --error=errors.err
 

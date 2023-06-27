@@ -234,7 +234,7 @@ def run_train(fold:int,
     torch.cuda.empty_cache()
     start = time.time()
     trainer.train()
-    logger.debug(f"Training completed in {print_time(start)}.")
+    logger.debug(f"Training completed in {print_time_size(start)}.")
 
     if training_args.load_best_model_at_end:
         print("Make prediction for the validation set.")
@@ -290,7 +290,7 @@ if __name__ == "__main__":
         processor, model = load_processor_and_model(pretrained_name_or_path, model_args)
 
         print("LOAD DATA")
-        train_dataset, val_dataset = load_data(df, data_args)
+        train_dataset, val_dataset = load_data(df[:20], data_args)
 
         print("TRAIN")
         run_train(i, processor, model, train_dataset, val_dataset, training_args)

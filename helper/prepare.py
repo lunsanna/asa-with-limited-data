@@ -63,15 +63,15 @@ def prepare_dataset(processor:Wav2Vec2Processor,
     # check sr
     sr = set(batch["sampling_rate"].tolist())
     assert len(sr)==1 and sr.pop()==target_sr, f"All sampling rate much match {target_sr}, got {sr}"
-    
+
     # speech => feature representation, using feature extractor
     batch["input_values"] = processor(
-        audio=batch["speech"], 
+        audio=batch["speech"], # (batch_size, seq_len)
         sampling_rate=target_sr, 
         return_tensors="pt", 
         padding="longest"
-    ).input_values
-    
+    ).input_values[0]
+
     # text => labels, using tokenizer
     batch["labels"] = processor(text=batch["text"]).input_ids
     
