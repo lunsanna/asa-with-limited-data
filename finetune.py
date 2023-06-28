@@ -4,46 +4,50 @@ import re
 import logging
 from functools import partial
 import multiprocessing
-import time 
+import time
 import argparse
-import os 
+import os
 
 import pandas as pd
 import torch
 import evaluate
+import gc
 
 from datasets import Dataset
-from accelerate import Accelerator
+from accelerate import Accelerator, DistributedDataParallelKwargs
+
 from torch.utils.data.dataloader import DataLoader
 from transformers import (
-    Wav2Vec2ForCTC, 
-    Wav2Vec2Processor, 
-    TrainingArguments, 
-    EvalPrediction, 
+    Wav2Vec2ForCTC,
+    Wav2Vec2Processor,
+    TrainingArguments,
+    EvalPrediction,
     AdamW)
 
-# For typing 
+# For typing
 from typing import Literal, Optional, Pattern, Union, Dict, Tuple, Any, Callable
 from evaluate import Metric
 
 from helper import (
-    prepare_example, 
-    prepare_dataset, 
-    compute_metrics, 
-    DataCollatorCTCWithPadding, 
+    prepare_example,
+    prepare_dataset,
+    compute_metrics,
+    DataCollatorCTCWithPadding,
     CTCTrainer,
-    configure_logger, 
-    print_time_size, 
+    configure_logger,
+    print_time_size,
     print_memory_usage)
 
 # Check device and initiate logger
-device:torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device: torch.device = torch.device(
+    "cuda" if torch.cuda.is_available() else "cpu")
 logger = logging.getLogger(__name__)
 
 ################
 # functions related to data handling
 
-def get_df(lang:Literal["fi","sv"], data_args:Dict[str, Any]) -> pd.DataFrame:
+
+def get_df(lang: Literal["fi", "sv"], data_args: Dict[str, Any]) -> pd.DataFrame:
     """Load csv file based on lang
 
     Args:
@@ -53,28 +57,30 @@ def get_df(lang:Literal["fi","sv"], data_args:Dict[str, Any]) -> pd.DataFrame:
     Returns:
         pd.DataFrame: summary of the training and val data
     """
-    assert lang in ["fi", "sv"], f"Expect lang to be either fi or sv, got {lang}"
-    csv_key = "csv_fi" if lang=="fi" else "csv_sv" 
+    assert lang in [
+        "fi", "sv"], f"Expect lang to be either fi or sv, got {lang}"
+    csv_key = "csv_fi" if lang == "fi" else "csv_sv"
 
     csv_path: Optional[str] = data_args.get(csv_key, None)
     assert csv_path, f"Trying to train {lang} model but {csv_key} is not defined in config.yml."
 
     try:
-        df = pd.read_csv(csv_path, 
-                    encoding="utf-8",
-                    usecols=["recording_path", "transcript_normalized", "split"])
+        df = pd.read_csv(csv_path,
+                         encoding="utf-8",
+                         usecols=["recording_path", "transcript_normalized", "split"])
     except:
         FileNotFoundError(
             f"Please copy the csv file to this directory from /scratch/work/lunt1/wav2vec2-finetune/{csv_path}")
 
-    df.columns = ["file_path", "split", "text"]    
+    df.columns = ["file_path", "split", "text"]
     return df
 
-def load_data(fold:int, 
-              df:pd.DataFrame, 
-              data_args:Dict[str,Any], 
-              processor:Wav2Vec2Processor, 
-              training_args:Dict[str,Any]) -> Tuple[Dataset, Dataset]:
+
+def load_data(fold: int,
+              df: pd.DataFrame,
+              data_args: Dict[str, Any],
+              processor: Wav2Vec2Processor,
+              training_args: Dict[str, Any]) -> Tuple[Dataset, Dataset]:
     """Split data into train and val, then process data for training
 
     Args:
@@ -86,32 +92,39 @@ def load_data(fold:int,
     """
 
     # 1. Create Dataset object, split the dataset into train and validation
-    train_dataset: Dataset = Dataset.from_pandas(df[df.split!=fold])
-    val_dataset: Dataset = Dataset.from_pandas(df[df.split==fold])
+    train_dataset: Dataset = Dataset.from_pandas(df[df.split != fold])
+    val_dataset: Dataset = Dataset.from_pandas(df[df.split == fold])
     train_dataset.set_format("pt")
     val_dataset.set_format("pt")
     logger.info(
         f"{len(train_dataset)} training samples, {len(val_dataset)} validation samples.")
 
-    # 2. Process data with the prepare_example function 
-    target_sr: int = data_args.get("target_feature_extractor_sampling_rate", 16000)
-    vocab_chars: str = "".join(t for t in processor.tokenizer.get_vocab().keys() if len(t) == 1)
-    text_cleaner_re: Pattern[str] = re.compile(f"[^\s{re.escape(vocab_chars)}]", flags=re.IGNORECASE)
+    # 2. Process data with the prepare_example function
+    target_sr: int = data_args.get(
+        "target_feature_extractor_sampling_rate", 16000)
+    vocab_chars: str = "".join(
+        t for t in processor.tokenizer.get_vocab().keys() if len(t) == 1)
+    text_cleaner_re: Pattern[str] = re.compile(
+        f"[^\s{re.escape(vocab_chars)}]", flags=re.IGNORECASE)
 
     # -- Pass the first two arguments to the function
-    prepare_example_partial = partial(prepare_example, target_sr, text_cleaner_re)
+    prepare_example_partial = partial(
+        prepare_example, target_sr, text_cleaner_re)
 
     # -- dataset columns after this step: speech, text, sampling_rate, duration_seconds
     start = time.time()
     train_dataset = train_dataset.map(
-        prepare_example_partial, 
-        remove_columns=["file_path","split"])
-    logger.debug(f"Training set: speech successfully loaded. {print_time_size(start, train_dataset)}")
+        prepare_example_partial,
+        remove_columns=["file_path", "split"])
+    logger.debug(
+        f"Training set: speech successfully loaded. {print_time_size(start, train_dataset)}")
     logger.debug(f"{print_memory_usage()}")
 
     start = time.time()
-    val_dataset = val_dataset.map(prepare_example_partial, remove_columns=["file_path", "split"])
-    logger.debug(f"Validation set: speech successfully loaded. {print_time_size(start, val_dataset)}")
+    val_dataset = val_dataset.map(
+        prepare_example_partial, remove_columns=["file_path", "split"])
+    logger.debug(
+        f"Validation set: speech successfully loaded. {print_time_size(start, val_dataset)}")
     logger.debug(f"{print_memory_usage()}")
 
     # 3. Process data with the prepare_dataset function
@@ -120,24 +133,26 @@ def load_data(fold:int,
 
     # -- dataset columns after this step: speech, text, sampling_rate, duration_seconds, input_values, labels
     start = time.time()
-    num_proc = 6 if multiprocessing.cpu_count() >=6 else multiprocessing.cpu_count()
-    train_dataset:Dataset = train_dataset.map(
+    num_proc = 6 if multiprocessing.cpu_count() >= 6 else multiprocessing.cpu_count()
+    train_dataset: Dataset = train_dataset.map(
         prepare_dataset_partial,
         num_proc=num_proc,
         batched=True,
         batch_size=training_args.get("per_device_train_batch_size", 1),
         remove_columns=["speech", "text", "sampling_rate", "duration_seconds"])
-    logger.debug(f"Training set: features and labels sucessfully extracted. {print_time_size(start, train_dataset)}")
+    logger.debug(
+        f"Training set: features and labels sucessfully extracted. {print_time_size(start, train_dataset)}")
     logger.debug(f"{print_memory_usage()}")
-    
+
     start = time.time()
-    val_dataset:Dataset = val_dataset.map(
-        prepare_dataset_partial, 
-        num_proc=num_proc, 
+    val_dataset: Dataset = val_dataset.map(
+        prepare_dataset_partial,
+        num_proc=num_proc,
         batched=True,
         batch_size=training_args.get("per_device_eval_batch_size", 1),
         remove_columns=["speech", "text", "sampling_rate", "duration_seconds"])
-    logger.debug(f"Validation set: features and labels sucessfully extracted. {print_time_size(start, val_dataset)}")
+    logger.debug(
+        f"Validation set: features and labels sucessfully extracted. {print_time_size(start, val_dataset)}")
     logger.debug(f"{print_memory_usage()}")
 
     return train_dataset, val_dataset
@@ -145,7 +160,8 @@ def load_data(fold:int,
 ################
 # functions related to processor and model
 
-def get_pretrained_name_or_path(lang:Literal["fi", "sv"], model_args:Dict[str, Any]) -> str:
+
+def get_pretrained_name_or_path(lang: Literal["fi", "sv"], model_args: Dict[str, Any]) -> str:
     """Fetch the name or path of the pretrained model based on lang
 
     Args:
@@ -155,15 +171,17 @@ def get_pretrained_name_or_path(lang:Literal["fi", "sv"], model_args:Dict[str, A
     Returns:
         str: the name or path to the pre-trained model
     """
-    assert lang in ["fi", "sv"], f"Expect lang to be either fi or sv, got {lang}"
-    key = "fi_pretrained" if lang=="fi" else "sv_pretrained"
+    assert lang in [
+        "fi", "sv"], f"Expect lang to be either fi or sv, got {lang}"
+    key = "fi_pretrained" if lang == "fi" else "sv_pretrained"
 
     pretrained_name_or_path: Optional[str] = model_args.get(key, None)
     assert pretrained_name_or_path, f"Trying to train {lang} model but {key} is not found in config.yml."
     return pretrained_name_or_path
 
-def load_processor_and_model(path:str, 
-                             model_args:Dict[str, Any]
+
+def load_processor_and_model(path: str,
+                             model_args: Dict[str, Any]
                              ) -> Tuple[Wav2Vec2Processor, Wav2Vec2ForCTC]:
     """Loads the processor and model from pre-trained
 
@@ -177,20 +195,21 @@ def load_processor_and_model(path:str,
     # 1. Load pre-trained processor, Wav2Vec2Processor
     start = time.time()
     processor = Wav2Vec2Processor.from_pretrained(
-        path, 
+        path,
         cache_dir=model_args.get("cache_dir", "./cache")
     )
-    logger.debug(f"Pre-trained processor loaded. {print_time_size(start, processor)}")
+    logger.debug(
+        f"Pre-trained processor loaded. {print_time_size(start, processor)}")
     logger.debug(f"{print_memory_usage()}")
 
     # 2. Load pre-trained model, Wav2Vec2ForCTC
     start = time.time()
     model = Wav2Vec2ForCTC.from_pretrained(
-            path, 
-            cache_dir=model_args.get("cache_dir", "./cache"), 
-            pad_token_id=processor.tokenizer.pad_token_id,
-            vocab_size=len(processor.tokenizer)
-        )
+        path,
+        cache_dir=model_args.get("cache_dir", "./cache"),
+        pad_token_id=processor.tokenizer.pad_token_id,
+        vocab_size=len(processor.tokenizer)
+    )
     logger.debug(f"Pre-trained model loaded. {print_time_size(start, model)}")
     logger.debug(f"{print_memory_usage()}")
 
@@ -202,11 +221,12 @@ def load_processor_and_model(path:str,
 ################
 # function related to training
 
-def run_train(fold:int, 
-              processor: Wav2Vec2Processor, 
-              model: Wav2Vec2ForCTC, 
-              train_dataset: Dataset, 
-              val_dataset: Dataset, 
+
+def run_train(fold: int,
+              processor: Wav2Vec2Processor,
+              model: Wav2Vec2ForCTC,
+              train_dataset: Dataset,
+              val_dataset: Dataset,
               training_args: Dict[str, Any]) -> None:
     """Run training
 
@@ -221,79 +241,109 @@ def run_train(fold:int,
     training_args["output_dir"] = f"output_fold_{fold}"
     training_args = TrainingArguments(**training_args)
 
-    accelerator = Accelerator(mixed_precision='fp16') if training_args.fp16 else Accelerator()
+    ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+    accelerator = Accelerator(
+        mixed_precision='fp16', kwargs_handlers=[ddp_kwargs]) if training_args.fp16 else Accelerator(kwargs_handlers=[ddp_kwargs])
 
-    data_collator = DataCollatorCTCWithPadding(processor=processor, padding=True)
+    data_collator = DataCollatorCTCWithPadding(
+        processor=processor, padding=True)
 
     wer_metric: Metric = evaluate.load("wer")
     cer_metric: Metric = evaluate.load("cer")
-    compute_metrics_partical:Callable[[EvalPrediction], Dict] = partial(compute_metrics, processor, wer_metric, cer_metric)
+    compute_metrics_partical: Callable[[EvalPrediction], Dict] = partial(
+        compute_metrics, processor, wer_metric, cer_metric)
 
     train_loader = DataLoader(
-        train_dataset, 
-        batch_size=training_args.per_device_train_batch_size, 
-        collate_fn=data_collator, 
+        train_dataset,
+        batch_size=training_args.per_device_train_batch_size,
+        collate_fn=data_collator,
         shuffle=True)
-    
+
     val_loader = DataLoader(
-        val_dataset, 
+        val_dataset,
         batch_size=training_args.per_device_eval_batch_size,
-        collate_fn=data_collator, 
+        collate_fn=data_collator,
         shuffle=True
     )
     if training_args.gradient_checkpointing:
         model.gradient_checkpointing_enable()
     optimizer = AdamW(model.parameters(), lr=training_args.learning_rate)
-    model, optimizer, train_loader = accelerator.prepare(model, optimizer, train_loader)
 
-    ## Training loop 
+    model, optimizer, train_loader = accelerator.prepare(
+        model, optimizer, train_loader)
+
+    # Training loop
     logger.debug(f"Training starts now.\n{print_memory_usage()}")
     start = time.time()
-    
+
     for epoch in range(training_args.num_train_epochs):
         for step, batch in enumerate(train_loader):
+            print(f"Step {step}")
             model.train()
-            loss = model(input_values=batch.input_values.squeeze(0), 
-                         attention_mask=batch.attention_mask, 
-                         labels=batch.labels).loss
+            logger.debug("one")
+            logger.debug(print_memory_usage())
+            out = model(input_values=batch.input_values,
+                        attention_mask=batch.attention_mask,
+                        labels=batch.labels)
+            loss = out.loss
+            logger.debug("two")
+            logger.debug(print_memory_usage())
+
+            print(out.loss.shape, out.logits.shape)
+            del out
             loss = loss/training_args.gradient_accumulation_steps
+            logger.debug("three")
+            logger.debug(print_memory_usage())
+
             accelerator.backward(loss)
+            logger.debug("four")
             logger.debug(print_memory_usage())
             if step % training_args.gradient_accumulation_steps == 0:
+                logger.debug("five")
+                logger.debug(print_memory_usage())
+
                 optimizer.step()
+                logger.debug("six")
+                logger.debug(print_memory_usage())
+
                 optimizer.zero_grad()
+                logger.debug("seven")
+                logger.debug(print_memory_usage())
+
+                del loss
+                gc.collect()
+                torch.cuda.empty_cache()
+
             if step % 1 == 0:
                 model.eval()
+
                 eval_example = next(iter(val_loader))
                 print(eval_example)
                 with torch.no_grad():
-                    preds = model(eval_example.input_values.squeeze(0))
+                    preds = model(eval_example.input_values)
                 print(preds)
                 # compute_metrics_partical(preds)
-                
+
     model.save_pretrained(training_args.output_dir)
     processor.save_pretrained(training_args.output_dir)
 
     logger.debug(f"Training completed in {print_time_size(start)}.")
-
-    
 
     # if training_args.load_best_model_at_end:
     #     print("Make prediction for the validation set.")
     #     predictions = trainer.predict(val_dataset)
     #     print(compute_metrics_partical(predictions))
 
-    
-
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lang", type=str, help="Choose training in either fi or sv.", default="sv")
+    parser.add_argument(
+        "--lang", type=str, help="Choose training in either fi or sv.", default="sv")
     args = parser.parse_args()
 
     lang = args.lang
-    if lang not in ["fi","sv"]:
+    if lang not in ["fi", "sv"]:
         raise ValueError(f"Lang must be either fi or sv, got {lang}.")
 
     # 1. Configs
@@ -302,7 +352,8 @@ if __name__ == "__main__":
 
     data_args: Dict[str, Union[bool, str, int]] = train_config["data_args"]
     model_args: Dict[str, Union[bool, str, int]] = train_config["model_args"]
-    training_args: Dict[str, Union[bool, str, int]] = train_config["training_args"]
+    training_args: Dict[str, Union[bool, str, int]
+                        ] = train_config["training_args"]
     training_args["local_rank"] = int(os.environ["LOCAL_RANK"])
 
     # -- configure logger, log cuda info
@@ -319,22 +370,26 @@ if __name__ == "__main__":
         logger.debug(f"Cuda count: {torch.cuda.device_count()}")
 
     # 2. Load csv file containing data summary
-    # -- columns: file_path, split, normalised transcripts 
-    df:pd.DataFrame = get_df(lang, data_args)
-    
-    # 3. Fetch the path of the pre-trained model 
-    pretrained_name_or_path:str = get_pretrained_name_or_path(lang, model_args)
+    # -- columns: file_path, split, normalised transcripts
+    df: pd.DataFrame = get_df(lang, data_args)
 
-    # 4. Run k-fold 
+    # 3. Fetch the path of the pre-trained model
+    pretrained_name_or_path: str = get_pretrained_name_or_path(
+        lang, model_args)
+
+    # 4. Run k-fold
     k = 1
     for i in range(k):
         print(f"********** Runing fold {i} ********** ")
 
         print("LOAD PRE-TRAINED PROCESSOR AND MODEL")
-        processor, model = load_processor_and_model(pretrained_name_or_path, model_args)
+        processor, model = load_processor_and_model(
+            pretrained_name_or_path, model_args)
 
         print("LOAD DATA")
-        train_dataset, val_dataset = load_data(i, df[:20], data_args, processor, training_args)
+        train_dataset, val_dataset = load_data(
+            i, df[:30], data_args, processor, training_args)
 
         print("TRAIN")
-        run_train(i, processor, model, train_dataset, val_dataset, training_args)
+        run_train(i, processor, model, train_dataset,
+                  val_dataset, training_args)
