@@ -230,13 +230,16 @@ def run_train(fold:int,
         tokenizer=processor.feature_extractor
     )
 
+    predictions = trainer.predict(val_dataset)
+    print(f"Before training: {compute_metrics_partical(predictions)}")
+
     logger.debug(f"Training starts now.\n{print_memory_usage()}")
     start = time.time()
     trainer.train()
     logger.debug(f"Trained {training_args.num_train_epochs} epochs, completed in {print_time(start)}.")
 
     if training_args.load_best_model_at_end:
-        print("Make prediction for the validation set.")
+        print("Make predictions for the validation set.")
         predictions = trainer.predict(val_dataset)
         print(compute_metrics_partical(predictions))
 
