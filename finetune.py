@@ -29,6 +29,7 @@ from helper import (
     compute_metrics, 
     DataCollatorCTCWithPadding, 
     CTCTrainer,
+    MetricCallback,
     configure_logger, 
     print_time, 
     print_memory_usage)
@@ -232,7 +233,8 @@ def run_train(fold:int,
         compute_metrics=compute_metrics_partical, 
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
-        tokenizer=processor.feature_extractor
+        tokenizer=processor.feature_extractor, 
+        callbacks=[MetricCallback(compute_metrics_partical)]
     )
 
     predictions = trainer.predict(val_dataset)

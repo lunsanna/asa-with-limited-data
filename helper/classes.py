@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass
+from log import print_time
+
+import time
 import torch
 import torch.nn as nn
-from transformers import Wav2Vec2Processor, Trainer, is_apex_available
+from transformers import (
+    Wav2Vec2Processor, 
+    Trainer, 
+    is_apex_available, 
+    TrainerCallback, 
+    TrainerState, 
+    TrainerControl)
 
 from typing import Union, Optional, List, Dict, Any
 
@@ -59,7 +68,6 @@ class DataCollatorCTCWithPadding:
         return batch
     
 
-
 class CTCTrainer(Trainer):
     def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
         """
@@ -111,3 +119,24 @@ class CTCTrainer(Trainer):
             loss.backward()
 
         return loss.detach()
+    
+
+class MetricCallback(TrainerControl):
+    def __init__(self, compute_metrics):
+        self.compute_metrics = compute_metrics
+
+    def on_epoch_begin(self, args, state: TrainerState, control:TrainerControl, **kwargs):
+        print(f"Starting epoch {state.epoch}")
+        self.start_time = time.time()
+
+    def on_epoch_end(self, args, state: TrainerState, control:TrainerControl, **kwargs):
+        super().on_epoch_end(args, state, control, **kwargs)
+        duration = time.time() - self.start_time
+        print(f"Epoch {state.epoch} completed. Duration: {print_time(duration)}")
+        
+        # compute training error 
+        trainer = kwargs["trainer"]
+        pred_out = trainer.predict(trainer.get_train_dataloader())
+        metrics = self.compute_metrics(pred_out)
+        
+        trainer.log_metric("train", metrics)
