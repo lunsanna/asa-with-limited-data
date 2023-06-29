@@ -21,7 +21,7 @@ def configure_logger(verbose:bool) -> None:
         handlers=[logging.StreamHandler(sys.stdout)],
     )
     
-def print_time_size(start:int, obj:Any=None) -> str:
+def print_time(start:int, obj:Any=None) -> str:
     """Produce a readble time period string based on the input s
 
     Args:

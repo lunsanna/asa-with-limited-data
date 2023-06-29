@@ -30,7 +30,7 @@ from helper import (
     DataCollatorCTCWithPadding, 
     CTCTrainer,
     configure_logger, 
-    print_time_size, 
+    print_time, 
     print_memory_usage)
 
 # Check device and initiate logger
@@ -100,12 +100,12 @@ def load_data(df:pd.DataFrame,
     train_dataset = train_dataset.map(
         prepare_example_partial, 
         remove_columns=["file_path","split"])
-    logger.debug(f"Training set: speech successfully loaded. {print_time_size(start, train_dataset)}")
+    logger.debug(f"Training set: speech successfully loaded. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
 
     start = time.time()
     val_dataset = val_dataset.map(prepare_example_partial, remove_columns=["file_path", "split"])
-    logger.debug(f"Validation set: speech successfully loaded. {print_time_size(start, val_dataset)}")
+    logger.debug(f"Validation set: speech successfully loaded. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
 
     # 3. Process data with the prepare_dataset function
@@ -120,7 +120,7 @@ def load_data(df:pd.DataFrame,
         num_proc=num_proc,
         batched=True,
         batch_size=training_args.get("per_device_train_batch_size", 1),)
-    logger.debug(f"Training set: features and labels sucessfully extracted. {print_time_size(start, train_dataset)}")
+    logger.debug(f"Training set: features and labels sucessfully extracted. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
     
     start = time.time()
@@ -129,7 +129,7 @@ def load_data(df:pd.DataFrame,
         num_proc=num_proc, 
         batched=True,
         batch_size=training_args.get("per_device_eval_batch_size", 1))
-    logger.debug(f"Validation set: features and labels sucessfully extracted. {print_time_size(start, val_dataset)}")
+    logger.debug(f"Validation set: features and labels sucessfully extracted. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
 
     return train_dataset, val_dataset
@@ -172,7 +172,7 @@ def load_processor_and_model(path:str,
         path, 
         cache_dir=model_args.get("cache_dir", "./cache")
     )
-    logger.debug(f"Pre-trained processor loaded. {print_time_size(start, processor)}")
+    logger.debug(f"Pre-trained processor loaded. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
 
     # 2. Load pre-trained model, Wav2Vec2ForCTC
@@ -183,7 +183,7 @@ def load_processor_and_model(path:str,
             pad_token_id=processor.tokenizer.pad_token_id,
             vocab_size=len(processor.tokenizer)
         )
-    logger.debug(f"Pre-trained model loaded. {print_time_size(start, model)}")
+    logger.debug(f"Pre-trained model loaded. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
 
     if model_args.get("freeze_feature_encoder", True):
@@ -200,7 +200,7 @@ def run_train(fold:int,
               train_dataset: Dataset, 
               val_dataset: Dataset, 
               training_args: Dict[str, Any]) -> None:
-    """Run training
+    """Initialise trainer and  run training
 
     Args:
         fold (int)
@@ -217,7 +217,7 @@ def run_train(fold:int,
     cer_metric: Metric = evaluate.load("cer")
     compute_metrics_partical:Callable[[EvalPrediction], Dict] = partial(compute_metrics, processor, wer_metric, cer_metric)
 
-    training_args["output_dir"] = f"output_fold_{fold}"
+    training_args["output_dir"] = f"{training_args.get('output_dir', 'output')}_fold_{fold}"
     training_args = TrainingArguments(**training_args)
 
     trainer = CTCTrainer(
@@ -231,10 +231,9 @@ def run_train(fold:int,
     )
 
     logger.debug(f"Training starts now.\n{print_memory_usage()}")
-    torch.cuda.empty_cache()
     start = time.time()
     trainer.train()
-    logger.debug(f"Training completed in {print_time_size(start)}.")
+    logger.debug(f"Trained {training_args.num_train_epochs} epochs, completed in {print_time(start)}.")
 
     if training_args.load_best_model_at_end:
         print("Make prediction for the validation set.")
@@ -276,7 +275,7 @@ if __name__ == "__main__":
 
     # 2. Load csv file containing data summary
     # -- columns: file_path, split, normalised transcripts 
-    df:pd.DataFrame = get_df(lang, data_args)
+    df:pd.DataFrame = get_df(lang, data_args)[:30]
     
     # 3. Fetch the path of the pre-trained model 
     pretrained_name_or_path:str = get_pretrained_name_or_path(lang, model_args)

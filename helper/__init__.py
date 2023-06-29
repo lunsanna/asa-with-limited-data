@@ -2,7 +2,7 @@
 from .prepare import prepare_example, prepare_dataset
 from .metrics import compute_metrics
 from .classes import DataCollatorCTCWithPadding, CTCTrainer
-from .log import configure_logger, print_time_size, print_memory_usage
+from .log import configure_logger, print_time, print_memory_usage
 
 __all__ = [
     'compute_metrics',
@@ -11,6 +11,6 @@ __all__ = [
     'DataCollatorCTCWithPadding', 
     'CTCTrainer', 
     'configure_logger', 
-    'print_time_size', 
+    'print_time', 
     'print_memory_usage', 
 ]
