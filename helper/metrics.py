@@ -44,7 +44,7 @@ def compute_metrics(processor: Wav2Vec2Processor,
 
     if logger.isEnabledFor(logging.DEBUG):
         for prediction, reference in zip(pred_str[:10], label_str[:10]):
-            logger.debug("REFERENCE: ", reference)
-            logger.debug("PREDICTION: ", prediction)
+            logger.debug(f'reference: "{reference}"')
+            logger.debug(f'prediction: "{prediction}"')
 
     return {"wer": wer, "cer": cer}
