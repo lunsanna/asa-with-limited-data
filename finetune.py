@@ -259,7 +259,7 @@ if __name__ == "__main__":
     data_args: Dict[str, Union[bool, str, int]] = train_config["data_args"]
     model_args: Dict[str, Union[bool, str, int]] = train_config["model_args"]
     training_args: Dict[str, Union[bool, str, int]] = train_config["training_args"]
-    training_args["local_rank"] = int(os.environ["LOCAL_RANK"])
+    # training_args["local_rank"] = int(os.environ["LOCAL_RANK"])
 
     # -- configure logger, log cuda info
     verbose_logging: bool = model_args.get("verbose_logging", True)
@@ -290,7 +290,7 @@ if __name__ == "__main__":
         processor, model = load_processor_and_model(pretrained_name_or_path, model_args)
 
         print("LOAD DATA")
-        train_dataset, val_dataset = load_data(df[:20], data_args)
+        train_dataset, val_dataset = load_data(df, data_args)
 
         print("TRAIN")
         run_train(i, processor, model, train_dataset, val_dataset, training_args)

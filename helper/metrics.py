@@ -37,10 +37,11 @@ def compute_metrics(processor: Wav2Vec2Processor,
 
     # 4. Compute metrics
     wer = wer_metric.compute(predictions=pred_str, references=label_str)
-    cer = cer_metric.computer(predictions=pred_str, references=label_str)
+    cer = cer_metric.compute(predictions=pred_str, references=label_str)
 
     # 5. Print results
-    logger.info("wer: ", wer, "cer", cer)
+    logger.info(f"wer: {wer}, cer: {cer}")
+
     if logger.isEnabledFor(logging.DEBUG):
         for prediction, reference in zip(pred_str[:10], label_str[:10]):
             logger.debug("REFERENCE: ", reference)
