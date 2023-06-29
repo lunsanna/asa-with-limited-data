@@ -40,7 +40,8 @@ logger = logging.getLogger(__name__)
 ################
 # functions related to data handling
 
-def get_df(lang:Literal["fi","sv"], data_args:Dict[str, Any]) -> pd.DataFrame:
+def get_df(lang:Literal["fi","sv"], 
+           data_args:Dict[str, Any]) -> pd.DataFrame:
     """Load csv file based on lang
 
     Args:
@@ -67,8 +68,11 @@ def get_df(lang:Literal["fi","sv"], data_args:Dict[str, Any]) -> pd.DataFrame:
     df.columns = ["file_path", "split", "text"]    
     return df
 
-def load_data(df:pd.DataFrame, 
-              data_args:Dict[str,Any]) -> Tuple[Dataset, Dataset]:
+def load_data(fold: int, 
+              df: pd.DataFrame, 
+              processor: Wav2Vec2Processor,
+              data_args: Dict[str,Any], 
+              training_args: Dict[str, Any]) -> Tuple[Dataset, Dataset]:
     """Split data into train and val, then process data for training
 
     Args:
@@ -137,7 +141,8 @@ def load_data(df:pd.DataFrame,
 ################
 # functions related to processor and model
 
-def get_pretrained_name_or_path(lang:Literal["fi", "sv"], model_args:Dict[str, Any]) -> str:
+def get_pretrained_name_or_path(lang:Literal["fi", "sv"], 
+                                model_args:Dict[str, Any]) -> str:
     """Fetch the name or path of the pretrained model based on lang
 
     Args:
@@ -292,7 +297,7 @@ if __name__ == "__main__":
         processor, model = load_processor_and_model(pretrained_name_or_path, model_args)
 
         print("LOAD DATA")
-        train_dataset, val_dataset = load_data(df, data_args)
+        train_dataset, val_dataset = load_data(i, df, processor, data_args, training_args)
 
         print("TRAIN")
         run_train(i, processor, model, train_dataset, val_dataset, training_args)
