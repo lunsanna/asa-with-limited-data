@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass
-from log import print_time
+from .log import print_time, print_memory_usage
 
 import time
 import torch
 import torch.nn as nn
+import logging
 from transformers import (
     Wav2Vec2Processor, 
     Trainer, 
@@ -20,6 +21,8 @@ if is_apex_available():
 
 _is_native_cuda_amp_available = True
 from torch.cuda.amp import autocast
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class DataCollatorCTCWithPadding:
@@ -121,22 +124,12 @@ class CTCTrainer(Trainer):
         return loss.detach()
     
 
-class MetricCallback(TrainerControl):
-    def __init__(self, compute_metrics):
-        self.compute_metrics = compute_metrics
-
+class MetricCallback(TrainerCallback):
     def on_epoch_begin(self, args, state: TrainerState, control:TrainerControl, **kwargs):
-        print(f"Starting epoch {state.epoch}")
+        logger.debug(f"----------- Starting epoch {state.epoch + 1} -----------")
         self.start_time = time.time()
 
     def on_epoch_end(self, args, state: TrainerState, control:TrainerControl, **kwargs):
         super().on_epoch_end(args, state, control, **kwargs)
-        duration = time.time() - self.start_time
-        print(f"Epoch {state.epoch} completed. Duration: {print_time(duration)}")
-        
-        # compute training error 
-        trainer = kwargs["trainer"]
-        pred_out = trainer.predict(trainer.get_train_dataloader())
-        metrics = self.compute_metrics(pred_out)
-        
-        trainer.log_metric("train", metrics)
+        logger.debug(f"Epoch {state.epoch} completed, "
+                     f"{print_time(self.start_time)} Mem usage: {print_memory_usage()}")

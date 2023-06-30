@@ -234,21 +234,22 @@ def run_train(fold:int,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         tokenizer=processor.feature_extractor, 
-        callbacks=[MetricCallback(compute_metrics_partical)]
+        callbacks=[MetricCallback]
     )
 
-    predictions = trainer.predict(val_dataset)
-    print(f"Before training: {compute_metrics_partical(predictions)}")
+    metrics_before_train = compute_metrics_partical(trainer.predict(val_dataset))
+    print({"eval_wer": metrics_before_train["wer"], "eval_cer": metrics_before_train["cer"]})
 
-    logger.debug(f"Training starts now.\n{print_memory_usage()}")
+    logger.debug(f"Training starts now. {print_memory_usage()}")
     start = time.time()
     trainer.train()
-    logger.debug(f"Trained {training_args.num_train_epochs} epochs, completed in {print_time(start)}.")
+    logger.info(f"Trained {training_args.num_train_epochs} epochs, completed in {print_time(start)}.")
 
     if training_args.load_best_model_at_end:
-        print("Make predictions for the validation set.")
+        print("Best model")
         predictions = trainer.predict(val_dataset)
-        print(compute_metrics_partical(predictions))
+        best_metrics = compute_metrics_partical(predictions, print_examples=False)
+        print({"eval_wer": best_metrics["wer"], "eval_cer": best_metrics["cer"], "checkpoint": trainer.state.best_model_checkpoint})
 
 
 if __name__ == "__main__":
@@ -285,14 +286,14 @@ if __name__ == "__main__":
 
     # 2. Load csv file containing data summary
     # -- columns: file_path, split, normalised transcripts 
-    df:pd.DataFrame = get_df(lang, data_args)[:30]
+    df:pd.DataFrame = get_df(lang, data_args)
     
     # 3. Fetch the path of the pre-trained model 
     pretrained_name_or_path:str = get_pretrained_name_or_path(lang, model_args)
 
     # 4. Run k-fold 
-    k = 1
-    for i in range(k):
+    k = 4
+    for i in range(1, k):
         print(f"********** Runing fold {i} ********** ")
 
         print("LOAD PRE-TRAINED PROCESSOR AND MODEL")
