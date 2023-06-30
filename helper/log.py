@@ -21,7 +21,7 @@ def configure_logger(verbose:bool) -> None:
         handlers=[logging.StreamHandler(sys.stdout)],
     )
     
-def print_time(start:int, obj:Any=None) -> str:
+def print_time(start:int) -> str:
     """Produce a readble time period string based on the input s
 
     Args:
@@ -34,10 +34,7 @@ def print_time(start:int, obj:Any=None) -> str:
     hours:int = int(s // 3600)
     minutes:int = int((s // 60) % 60)
     seconds:int = int(s % 60)
-    out = f"Time: {hours}:{minutes:02d}:{seconds:02d}. "
-    if obj:
-        out += f" Size: {sys.getsizeof(obj)//1024**3}G."
-    return out
+    return f"Duration: {hours}:{minutes:02d}:{seconds:02d}"
 
 
 def print_memory_usage():
@@ -60,6 +57,7 @@ def print_memory_usage():
         for i in range(n_device):
             handle = nvmlDeviceGetHandleByIndex(i)
             info = nvmlDeviceGetMemoryInfo(handle)
-            gpu_memory += f"Cuda {i}: memory acclocated: {info.used//gb_factor} G.\n"
+            gpu_memory += f" Cuda {i}: memory acclocated: {info.used//gb_factor} G."
+        gpu_memory.strip("\n")
 
-    return f"CPU mem usage: {cpu_memory.rss/gb_factor:.2f}G\n{gpu_memory}"
+    return f"CPU mem usage: {cpu_memory.rss/gb_factor:.2f}G. {gpu_memory}"
