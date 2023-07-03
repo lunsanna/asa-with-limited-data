@@ -219,13 +219,21 @@ def run_train(fold:int,
 
     data_collator = DataCollatorCTCWithPadding(processor=processor, padding=True)
 
+    # Set up compute metric function
     wer_metric: Metric = evaluate.load("wer")
     cer_metric: Metric = evaluate.load("cer")
     compute_metrics_partical:Callable[[EvalPrediction], Dict] = partial(compute_metrics, processor, wer_metric, cer_metric)
 
-    training_args["output_dir"] = f"{training_args.get('output_dir', 'output')}_fold_{fold}"
+    # Update output dir based on fold 
+    output_dir = training_args.get("output_dir", "output")
+    training_args["output_dir"] = f"{output_dir[:-1]}{fold}" if output_dir[-1].isnumeric() else f"{output_dir}_fold_{fold}"
     training_args = TrainingArguments(**training_args)
 
+    # Print metrics before training
+    metrics_before_train = compute_metrics_partical(trainer.predict(val_dataset), print_examples=False)
+    print({"eval_wer": metrics_before_train["wer"], "eval_cer": metrics_before_train["cer"]})
+
+    # Train
     trainer = CTCTrainer(
         model=model,
         data_collator=data_collator, 
@@ -237,14 +245,12 @@ def run_train(fold:int,
         callbacks=[MetricCallback]
     )
 
-    metrics_before_train = compute_metrics_partical(trainer.predict(val_dataset))
-    print({"eval_wer": metrics_before_train["wer"], "eval_cer": metrics_before_train["cer"]})
-
     logger.debug(f"Training starts now. {print_memory_usage()}")
     start = time.time()
     trainer.train()
-    logger.info(f"Trained {training_args.num_train_epochs} epochs, completed in {print_time(start)}.")
+    logger.info(f"Trained {training_args.num_train_epochs} epochs. {print_time(start)}.")
 
+    # Print metrics and checkpoint location of the best model
     if training_args.load_best_model_at_end:
         print("Best model")
         predictions = trainer.predict(val_dataset)
@@ -293,7 +299,7 @@ if __name__ == "__main__":
 
     # 4. Run k-fold 
     k = 4
-    for i in range(1, k):
+    for i in range(3, k):
         print(f"********** Runing fold {i} ********** ")
 
         print("LOAD PRE-TRAINED PROCESSOR AND MODEL")
