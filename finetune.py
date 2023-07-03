@@ -229,11 +229,7 @@ def run_train(fold:int,
     training_args["output_dir"] = f"{output_dir[:-1]}{fold}" if output_dir[-1].isnumeric() else f"{output_dir}_fold_{fold}"
     training_args = TrainingArguments(**training_args)
 
-    # Print metrics before training
-    metrics_before_train = compute_metrics_partical(trainer.predict(val_dataset), print_examples=False)
-    print({"eval_wer": metrics_before_train["wer"], "eval_cer": metrics_before_train["cer"]})
-
-    # Train
+    # Set up trainer
     trainer = CTCTrainer(
         model=model,
         data_collator=data_collator, 
@@ -245,6 +241,11 @@ def run_train(fold:int,
         callbacks=[MetricCallback]
     )
 
+    # Print metrics before training
+    metrics_before_train = compute_metrics_partical(trainer.predict(val_dataset), print_examples=False)
+    print({"eval_wer": metrics_before_train["wer"], "eval_cer": metrics_before_train["cer"]})
+    
+    # Train
     logger.debug(f"Training starts now. {print_memory_usage()}")
     start = time.time()
     trainer.train()
