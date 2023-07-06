@@ -89,8 +89,8 @@ def load_data(fold: int,
     """
 
     # 1. Create Dataset object, split the dataset into train and validation
-    train_dataset: Dataset = Dataset.from_pandas(df[df.split != i])
-    val_dataset: Dataset = Dataset.from_pandas(df[df.split == i])
+    train_dataset: Dataset = Dataset.from_pandas(df[df.split != fold])
+    val_dataset: Dataset = Dataset.from_pandas(df[df.split == fold])
     train_dataset.set_format("pt")
     val_dataset.set_format("pt")
 
@@ -286,30 +286,27 @@ def run_train(fold: int,
     logger.info(
         f"Trained {training_args.num_train_epochs} epochs. {print_time(start)}.")
 
-    # Print metrics and checkpoint location of the best model
+    # Save the last checkpoint
     if training_args.load_best_model_at_end:
-        print("Best model")
-        predictions = trainer.predict(val_dataset)
-        best_metrics = compute_metrics_partical(
-            predictions, print_examples=False)
-        print({"eval_wer": best_metrics["wer"], "eval_cer": best_metrics["cer"],
-              "checkpoint": trainer.state.best_model_checkpoint})
+        print(f"Best model save at {trainer.state.best_model_checkpoint}")
+    else:
+        trainer.save(f"{training_args.output_dir}/final")
+        print(f"Best model save at {training_args.output_dir}/final")
 
 
 if __name__ == "__main__":
 
     augment_names = ["time_masking"]
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--lang", type=str, help="Model language, either fi or sv.", default="sv")
-    parser.add_argument("--augment", type=str,
-                        help="Choose augmentation method", default=None)
+    parser.add_argument("--lang", type=str, default="sv", help="Model language, either fi or sv.")
+    parser.add_argument("--augment", type=str, default=None, help="Augmentation method")
     parser.add_argument("--test", help="Test run", action="store_true")
+    parser.add_argument("--fold", type=int, default=None, help="Fold number, 0-3")
     args = parser.parse_args()
 
-    lang = args.lang
-    if lang not in ["fi", "sv"]:
-        raise ValueError(f"Lang must be either fi or sv, got {lang}.")
+    assert args.lang in ["fi", "sv"], f"Lang must be either fi or sv, got {args.lang}."
+    # print(args.fold, args.fold in range(4))
+    assert args.fold in range(4), f"Expect fold 0-3, got {args.fold}"
 
     # 1. Configs
     with open('config.yml', 'r') as file:
@@ -330,33 +327,29 @@ if __name__ == "__main__":
         # mix precision training only avaible for cuda
         training_args["fp16"] = False
         logger.warning("Cuda is not available!")
-        logger.debug(f"Training {lang} model.")
+        logger.debug(f"Training {args.lang} model.")
     else:
         logger.debug(f"Cuda count: {torch.cuda.device_count()}")
 
     # 2. Load csv file containing data summary
     # -- columns: file_path, split, normalised transcripts
-    df: pd.DataFrame = get_df(lang, data_args)
+    df: pd.DataFrame = get_df(args.lang, data_args)
     if args.test:
-        df = df[:20]
+        df = df[:30]
 
     # 3. Fetch the path of the pre-trained model
     pretrained_name_or_path: str = get_pretrained_name_or_path(
-        lang, model_args)
+        args.lang, model_args)
 
     # 4. Run k-fold
-    k = 4
-    for i in range(0, k):
-        print(f"********** Runing fold {i} ********** ")
+    print(f"********** Runing fold {args.fold} ********** ")
 
-        print("LOAD PRE-TRAINED PROCESSOR AND MODEL")
-        processor, model = load_processor_and_model(
-            pretrained_name_or_path, model_args)
+    print("LOAD PRE-TRAINED PROCESSOR AND MODEL")
+    processor, model = load_processor_and_model(pretrained_name_or_path, model_args)
 
-        print("LOAD DATA")
-        train_dataset, val_dataset = load_data(
-            i, df, processor, data_args, training_args, args.augment)
+    print("LOAD DATA")
+    train_dataset, val_dataset = load_data(
+        args.fold, df, processor, data_args, training_args, args.augment)
 
-        print("TRAIN")
-        run_train(i, processor, model, train_dataset,
-                  val_dataset, training_args)
+    print("TRAIN")
+    run_train(args.fold, processor, model, train_dataset, val_dataset, training_args)
