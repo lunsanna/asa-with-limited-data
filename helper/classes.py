@@ -70,7 +70,6 @@ class DataCollatorCTCWithPadding:
         batch["labels"] = labels
         return batch
     
-
 class CTCTrainer(Trainer):
     def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
         """
@@ -123,7 +122,6 @@ class CTCTrainer(Trainer):
 
         return loss.detach()
     
-
 class MetricCallback(TrainerCallback):
     def on_epoch_begin(self, args, state: TrainerState, control:TrainerControl, **kwargs):
         logger.debug(f"----------- Starting epoch {state.epoch + 1} -----------")

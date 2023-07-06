@@ -33,3 +33,7 @@ def time_masking(max_mask_proportion: float,
 
     example["speech"] = augmented_speech.squeeze()  # 1D speech array
     return example
+
+
+def pitch_shift():
+    pass
