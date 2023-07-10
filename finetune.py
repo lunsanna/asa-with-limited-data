@@ -10,7 +10,7 @@ import argparse
 import pandas as pd
 import torch
 import evaluate
-from datasets import Dataset, concatenate_datasets
+from datasets import Dataset
 from transformers import (
     Wav2Vec2ForCTC,
     Wav2Vec2Processor,
@@ -21,7 +21,7 @@ from transformers import (
 from typing import Literal, Optional, Pattern, Union, Dict, Tuple, Any, Callable
 from evaluate import Metric
 
-from augmentations import time_masking
+from augmentations import apply_tranformations, transform_names
 from helper import (
     prepare_example,
     prepare_dataset,
@@ -53,140 +53,110 @@ def get_df(lang: Literal["fi", "sv"],
     Returns:
         pd.DataFrame: summary of the training and val data
     """
-    assert lang in [
-        "fi", "sv"], f"Expect lang to be either fi or sv, got {lang}"
     csv_key = "csv_fi" if lang == "fi" else "csv_sv"
-
-    csv_path: Optional[str] = data_args.get(csv_key, None)
-    assert csv_path, f"Trying to train {lang} model but {csv_key} is not defined in config.yml."
-
+    csv_path: Optional[str] = data_args[csv_key]
     try:
         df = pd.read_csv(csv_path,
                          encoding="utf-8",
                          usecols=["recording_path", "transcript_normalized", "split"])
     except:
-        FileNotFoundError(
-            f"Please copy the csv file to this directory from /scratch/work/lunt1/wav2vec2-finetune/{csv_path}")
-
+        FileNotFoundError(f"The data summary file {csv_path} not found, please check the file path in config.yml.")
     df.columns = ["file_path", "split", "text"]
     return df
 
-
-def load_data(fold: int,
-              df: pd.DataFrame,
-              processor: Wav2Vec2Processor,
-              data_args: Dict[str, Any],
-              training_args: Dict[str, Any],
-              augment: Optional[str] = None) -> Tuple[Dataset, Dataset]:
-    """Split data into train and val, then process data for training
+def load_speech(train_dataset: Dataset,
+                val_dataset: Dataset,
+                processor: Wav2Vec2Processor,
+                data_args: Dict[str, Any]) -> Tuple[Dataset, Dataset]:
+    """Load speech data with prepare_example function. 
+    New columns after this step: speech, sampling_rate, duration_seconds
+    Existing text column will be pre-processed a well. 
 
     Args:
-        df (pd.DataFrame): data summary, contain file_path, split and normalised text
+        train_dataset (Dataset)
+        val_dataset (Dataset)
+        processor (Wav2Vec2Processor): pre-trained processor, used to get vocab
         data_args (Dict[str, Any]): data config loaded from config.yml
 
     Returns:
         Tuple[Dataset, Dataset]: dataset for training and validation
     """
+    target_sr: int = data_args["target_feature_extractor_sampling_rate"]
 
-    # 1. Create Dataset object, split the dataset into train and validation
-    train_dataset: Dataset = Dataset.from_pandas(df[df.split != fold])
-    val_dataset: Dataset = Dataset.from_pandas(df[df.split == fold])
-    train_dataset.set_format("pt")
-    val_dataset.set_format("pt")
+    # define data regex text cleaner to process text
+    vocab_chars: str = "".join(t for t in processor.tokenizer.get_vocab().keys() if len(t) == 1)
+    text_cleaner_re: Pattern[str] = re.compile(f"[^\s{re.escape(vocab_chars)}]", flags=re.IGNORECASE)
 
-    # 2. Process data with the prepare_example function
-    target_sr: int = data_args.get(
-        "target_feature_extractor_sampling_rate", 16000)
-    vocab_chars: str = "".join(
-        t for t in processor.tokenizer.get_vocab().keys() if len(t) == 1)
-    text_cleaner_re: Pattern[str] = re.compile(
-        f"[^\s{re.escape(vocab_chars)}]", flags=re.IGNORECASE)
+    # Pass the first two arguments to the function
+    prepare_example_partial = partial(prepare_example, target_sr, text_cleaner_re)
 
-    # -- Pass the first two arguments to the function
-    prepare_example_partial = partial(
-        prepare_example, target_sr, text_cleaner_re)
-
-    # -- dataset columns after this step: speech, text, sampling_rate, duration_seconds
+    # Apply the prepare example function too all examples 
+    # -- training set
     start = time.time()
     train_dataset = train_dataset.map(
         prepare_example_partial,
         remove_columns=["file_path", "split"])
-    logger.debug(
-        f"Training set: speech successfully loaded. {print_time(start)}")
+    logger.debug(f"Training set (N={len(train_dataset)}): speech successfully loaded. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
 
+    # -- validation set
     start = time.time()
     val_dataset = val_dataset.map(
         prepare_example_partial, remove_columns=["file_path", "split"])
-    logger.debug(
-        f"Validation set: speech successfully loaded. {print_time(start)}")
+    logger.debug(f"Validation set (N={len(val_dataset)}): speech successfully loaded. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
 
-    # 3. Apply augmentation
-    if augment:
-        print(f"AUGMENT DATA, METHOD: {augment}")
-        start = time.time()
-        time_masking_partial = partial(time_masking, 0.2, data_args)
-        augmented_train_dataset = train_dataset.map(time_masking_partial)
-        train_dataset = concatenate_datasets([
-            train_dataset, augmented_train_dataset]).shuffle(seed=42)
-        logger.debug(
-            f"Training set: augmented training data added. {print_time(start)}")
+    return train_dataset, val_dataset
 
-    # 4. Process data with the prepare_dataset function
-    # -- Pass the first two arguments to the function
+def extract_features(train_dataset: Dataset, 
+                     val_dataset: Dataset, 
+                     processor: Wav2Vec2Processor, 
+                     data_args: Dict[str, Any], 
+                     training_args: Dict[str, Any]) -> Tuple[Dataset, Dataset]:
+    """Process data with the prepare_dataset function
+    New columns after this step: input_values, labels
+
+    Args:
+        train_dataset (Dataset)
+        val_dataset (Dataset)
+        processor (Wav2Vec2Processor): pre-trained processor, used to process speech and text
+        data_args (Dict[str, Any]): data args read from config.yml
+        training_args (Dict[str, Any]): training args read from config.yml
+
+    Returns:
+        Tuple[Dataset, Dataset]: train and val data set ready for training
+    """
+    
+    target_sr: int = data_args["target_feature_extractor_sampling_rate"]
+
+    # Pass the first two arguments to the function
     prepare_dataset_partial = partial(prepare_dataset, processor, target_sr)
 
-    # -- dataset columns after this step: speech, text, sampling_rate, duration_seconds, input_values, labels
+    # Training set 
     start = time.time()
     num_proc = 6 if cpu_count() >= 6 else cpu_count()
     train_dataset: Dataset = train_dataset.map(
         prepare_dataset_partial,
         num_proc=num_proc,
         batched=True,
-        batch_size=training_args.get("per_device_train_batch_size", 1),)
-    logger.debug(
-        f"Training set: features and labels sucessfully extracted. {print_time(start)}")
+        batch_size=training_args["per_device_train_batch_size"])
+    logger.debug(f"Training set (N={len(train_dataset)}): features and labels sucessfully extracted. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
 
+    # Validation set
     start = time.time()
     val_dataset: Dataset = val_dataset.map(
         prepare_dataset_partial,
         num_proc=num_proc,
         batched=True,
-        batch_size=training_args.get("per_device_eval_batch_size", 1))
-    logger.debug(
-        f"Validation set: features and labels sucessfully extracted. {print_time(start)}")
+        batch_size=training_args["per_device_eval_batch_size"])
+    logger.debug(f"Validation set (N={len(val_dataset)}): features and labels sucessfully extracted. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
-
-    logger.info(
-        f"Data ready. Train set: {len(train_dataset)}. Val set: {len(val_dataset)}.")
 
     return train_dataset, val_dataset
 
 ################
 # functions related to processor and model
-
-
-def get_pretrained_name_or_path(lang: Literal["fi", "sv"],
-                                model_args: Dict[str, Any]) -> str:
-    """Fetch the name or path of the pretrained model based on lang
-
-    Args:
-        lang (str): either fi or sv
-        model_args (Dict[str, Any]): model args defined in config.yml
-
-    Returns:
-        str: the name or path to the pre-trained model
-    """
-    assert lang in [
-        "fi", "sv"], f"Expect lang to be either fi or sv, got {lang}"
-    key = "fi_pretrained" if lang == "fi" else "sv_pretrained"
-
-    pretrained_name_or_path: Optional[str] = model_args.get(key, None)
-    assert pretrained_name_or_path, f"Trying to train {lang} model but {key} is not found in config.yml."
-    return pretrained_name_or_path
-
 
 def load_processor_and_model(path: str,
                              model_args: Dict[str, Any]
@@ -257,8 +227,7 @@ def run_train(fold: int,
 
     # Update output dir based on fold
     output_dir = training_args.get("output_dir", "output")
-    training_args["output_dir"] = f"{output_dir[:-1]}{fold}" if output_dir[-1].isnumeric(
-    ) else f"{output_dir}_fold_{fold}"
+    training_args["output_dir"] = f"{output_dir[:-1]}{fold}" if output_dir[-1].isnumeric() else f"{output_dir}_fold_{fold}"
     training_args = TrainingArguments(**training_args)
 
     # Set up trainer
@@ -290,22 +259,23 @@ def run_train(fold: int,
     if training_args.load_best_model_at_end:
         print(f"Best model save at {trainer.state.best_model_checkpoint}")
     else:
-        trainer.save(f"{training_args.output_dir}/final")
+        trainer.save_model(f"{training_args.output_dir}/final")
         print(f"Best model save at {training_args.output_dir}/final")
 
+    predictions = trainer.predict(val_dataset)
+    compute_metrics_partical(predictions, print_examples=True)
+    
 
 if __name__ == "__main__":
 
-    augment_names = ["time_masking"]
     parser = argparse.ArgumentParser()
     parser.add_argument("--lang", type=str, default="sv", help="Model language, either fi or sv.")
-    parser.add_argument("--augment", type=str, default=None, help="Augmentation method")
+    parser.add_argument("--augment", type=str, default=None, help="Name of augmentation method")
     parser.add_argument("--test", help="Test run", action="store_true")
     parser.add_argument("--fold", type=int, default=None, help="Fold number, 0-3")
     args = parser.parse_args()
 
     assert args.lang in ["fi", "sv"], f"Lang must be either fi or sv, got {args.lang}."
-    # print(args.fold, args.fold in range(4))
     assert args.fold in range(4), f"Expect fold 0-3, got {args.fold}"
 
     # 1. Configs
@@ -314,8 +284,7 @@ if __name__ == "__main__":
 
     data_args: Dict[str, Union[bool, str, int]] = train_config["data_args"]
     model_args: Dict[str, Union[bool, str, int]] = train_config["model_args"]
-    training_args: Dict[str, Union[bool, str, int]
-                        ] = train_config["training_args"]
+    training_args: Dict[str, Union[bool, str, int]] = train_config["training_args"]
     # training_args["local_rank"] = int(os.environ["LOCAL_RANK"])
 
     # -- configure logger, log cuda info
@@ -336,10 +305,11 @@ if __name__ == "__main__":
     df: pd.DataFrame = get_df(args.lang, data_args)
     if args.test:
         df = df[:30]
+        training_args["num_train_epochs"] = 1
 
     # 3. Fetch the path of the pre-trained model
-    pretrained_name_or_path: str = get_pretrained_name_or_path(
-        args.lang, model_args)
+    key = "fi_pretrained" if args.lang == "fi" else "sv_pretrained"
+    pretrained_name_or_path: Optional[str] = model_args[key]
 
     # 4. Run k-fold
     print(f"********** Runing fold {args.fold} ********** ")
@@ -348,8 +318,25 @@ if __name__ == "__main__":
     processor, model = load_processor_and_model(pretrained_name_or_path, model_args)
 
     print("LOAD DATA")
-    train_dataset, val_dataset = load_data(
-        args.fold, df, processor, data_args, training_args, args.augment)
+    # -- split dataset into train and validation
+    train_dataset: Dataset = Dataset.from_pandas(df[df.split != args.fold])
+    val_dataset: Dataset = Dataset.from_pandas(df[df.split == args.fold])
+    train_dataset.set_format("pt")
+    val_dataset.set_format("pt")
 
+    # -- load speech and other info from path 
+    train_dataset, val_dataset = load_speech(train_dataset, val_dataset, processor, data_args)
+    
+    # -- apply augmentations
+    if args.augment:
+        assert args.augment in transform_names, f"Expect {transform_names}, got {args.augment}"
+        print(f"AUGMENT DATA, METHOD: {args.augment}")
+        augment_args: Dict[str, Any] = train_config["augment_args"]
+        train_dataset = apply_tranformations(train_dataset, data_args, augment_args, args.augment)
+    
+    print("EXTRACT FEATURES")
+    train_dataset, val_dataset = extract_features(train_dataset, val_dataset, 
+                                                  processor, data_args,training_args)
+    
     print("TRAIN")
     run_train(args.fold, processor, model, train_dataset, val_dataset, training_args)
