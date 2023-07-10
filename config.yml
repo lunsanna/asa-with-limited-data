@@ -1,7 +1,6 @@
-# This config file contains all the params used for training
-# Some of them are taken from Yaroslav's shell script
+# ALL hyper-parameters are defined in this config file
 
-# TODO: revise and remove unused ones
+# Some of them are taken from Yaroslav's shell script
 
 model_args:
   # The name or path of the pre-trained model to use as a starting point
@@ -33,8 +32,7 @@ data_args:
   # The name of the validation split, "train" for training error, "validation" for test error
   validation_split_name: "train"
 
-  # The orthography used for normalization and tokenization: 'librispeech' (default), 'timit', or 'buckwalter'.
-  orthography: "timit"
+  # orthography: "timit"
 
   # Target sampling rate for the feature extractor, replace with a specific value
   target_feature_extractor_sampling_rate: 16000
@@ -43,7 +41,7 @@ data_args:
   # TODO: Handle this in the python code.
   # preprocessing_num_workers: "$(nproc)"
 
-
+# used to create TrainAguments
 training_args:
   # Number of training epochs
   num_train_epochs: 20
@@ -98,10 +96,23 @@ training_args:
 
   # ddp_find_unused_parameters: true
 
+augment_args:
+  # true = double the amount of training by adding an augmented copy 
+  # false = use only the augmented copy 
+  copy: true
 
+  time_masking:
+    # the max proportion of masked time steps, 0.2 means max 20% of the speech will be masked 
+    max_mask_proportion: 0.2
 
-
-
+    # the max window size of each mask, will be uniformly chosen in (0, 0.2]
+    # unit: second (0.2 == 200 ms)
+    max_mask_size: 0.2
+  
+  pitch_shift:
+    # unit: cent, 
+    # pitch shift factor sampled from Gaussian(0, sigma)
+    sigma: 50
 
 
 
