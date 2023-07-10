@@ -11,7 +11,7 @@ def compute_metrics(processor: Wav2Vec2Processor,
                     wer_metric: Metric, 
                     cer_metric: Metric, 
                     pred: EvalPrediction, 
-                    print_examples: bool = True) -> Dict:
+                    print_examples: bool = False) -> Dict:
     """_summary_
 
     Args:
@@ -44,7 +44,7 @@ def compute_metrics(processor: Wav2Vec2Processor,
     logger.info(f"wer: {wer}, cer: {cer}")
 
     if print_examples and logger.isEnabledFor(logging.DEBUG):
-        for prediction, reference in zip(pred_str[:10], label_str[:10]):
+        for prediction, reference in zip(pred_str, label_str):
             logger.debug(f'reference: "{reference}"')
             logger.debug(f'prediction: "{prediction}"')
 
