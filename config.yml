@@ -55,9 +55,6 @@ training_args:
   # Number of steps to accumulate gradients before performing an update
   gradient_accumulation_steps: 4
 
-  # The maximum number of model checkpoint files to keep
-  save_total_limit: 3
-
   # The strategy for evaluation during training, "steps" means evaluating at each logging step
   evaluation_strategy: "epoch"
   # eval_steps: 1
@@ -85,8 +82,9 @@ training_args:
   # The backend to use for half precision, "cuda_amp" for NVIDIA's Automatic Mixed Precision
   half_precision_backend: "cuda_amp"
 
-  # Whether to load the best model found during training at the end of training
+  # With the following setting, only the last checkpoint is saved
   load_best_model_at_end: false
+  save_total_limit: 1
 
   # The metric to use to determine the best model
   metric_for_best_model: "wer"
@@ -112,9 +110,21 @@ augment_args:
   pitch_shift:
     # unit: cent, 
     # pitch shift factor sampled from Gaussian(0, sigma)
+    gaussian: true
     sigma: 50
+    # if gaussian: false, then sample from Uniform(-range, range)
+    range: 300
+  
+  reverberation: 
+    room_size_sigma: 60
 
+  additive_noise:
+    # the dir that contains the noise samples
+    noise_dir: "noise-free-sound"
 
+    # snr range
+    snr_low: 10
+    snr_high: 50
 
 
 
