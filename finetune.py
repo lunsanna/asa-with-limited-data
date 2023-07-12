@@ -252,15 +252,11 @@ def run_train(fold: int,
     logger.debug(f"Training starts now. {print_memory_usage()}")
     start = time.time()
     trainer.train()
-    logger.info(
-        f"Trained {training_args.num_train_epochs} epochs. {print_time(start)}.")
+    logger.info(f"Trained {training_args.num_train_epochs} epochs. {print_time(start)}.")
 
     # Save the last checkpoint
     if training_args.load_best_model_at_end:
         print(f"Best model save at {trainer.state.best_model_checkpoint}")
-    else:
-        trainer.save_model(f"{training_args.output_dir}/final")
-        print(f"Best model save at {training_args.output_dir}/final")
 
     predictions = trainer.predict(val_dataset)
     compute_metrics_partical(predictions, print_examples=True)
