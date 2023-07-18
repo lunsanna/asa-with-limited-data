@@ -3,6 +3,7 @@ from .prepare import prepare_example, prepare_dataset
 from .metrics import compute_metrics
 from .classes import DataCollatorCTCWithPadding, CTCTrainer, MetricCallback
 from .log import configure_logger, print_time, print_memory_usage
+from .arg_classes import DataArguments, ModelArguments
 
 __all__ = [
     'compute_metrics',
@@ -13,5 +14,7 @@ __all__ = [
     'configure_logger', 
     'print_time', 
     'print_memory_usage', 
-    'MetricCallback'
+    'MetricCallback', 
+    'DataArguments', 
+    'ModelArguments'
 ]

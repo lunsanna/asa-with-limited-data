@@ -10,7 +10,7 @@ model_args:
   fi_pretrained: "/scratch/elec/puhe/p/getmany1/wav2vec2_large_14.2k_fi_donatespeech_100h_SEGMENTED_13042022_60ep/checkpoint-11100"
 
   # Directory to store output files, including model checkpoints
-  output_dir: "output"
+  # output_dir: "output"
 
   # Directory to store cached files for faster data loading
   cache_dir: "cache"
@@ -27,10 +27,10 @@ data_args:
   csv_sv: "swedish_df.csv"
 
   # The name of the training split
-  train_split_name: "train"
+  # train_split_name: "train"
 
   # The name of the validation split, "train" for training error, "validation" for test error
-  validation_split_name: "train"
+  # validation_split_name: "train"
 
   # orthography: "timit"
 
@@ -101,19 +101,23 @@ augment_args:
 
   time_masking:
     # the max proportion of masked time steps, 0.2 means max 20% of the speech will be masked 
-    max_mask_proportion: 0.2
+    max_mask_proportion: 0.3
 
     # the max window size of each mask, will be uniformly chosen in (0, 0.2]
     # unit: second (0.2 == 200 ms)
+    # range of phonemem duration
     max_mask_size: 0.2
-  
+
+  band_reject:
+    # the window width of the mask , constant
+    max_mask_width: 64
+    # the max proportion of masked channels in the range specified above
+    max_mask_proportion: 0.4  
+
   pitch_shift:
     # unit: cent, 
     # pitch shift factor sampled from Gaussian(0, sigma)
-    gaussian: true
     sigma: 50
-    # if gaussian: false, then sample from Uniform(-range, range)
-    range: 300
   
   reverberation: 
     room_size_sigma: 60
@@ -125,9 +129,14 @@ augment_args:
     # snr range
     snr_low: 10
     snr_high: 50
+  
 
-
-
+  tempo_perturbation: 
+    perturbation_factors:
+      - 0.9
+      - 0.95
+      - 1.05
+      - 1.1
 
 
 

@@ -18,20 +18,15 @@ from transformers import (
     EvalPrediction)
 
 # For typing
-from typing import Literal, Optional, Pattern, Union, Dict, Tuple, Any, Callable
+from typing import Literal, Optional, Pattern, Dict, Tuple, Any, Callable
 from evaluate import Metric
 
-from augmentations import apply_tranformations, transform_names
-from helper import (
-    prepare_example,
-    prepare_dataset,
-    compute_metrics,
-    DataCollatorCTCWithPadding,
-    CTCTrainer,
-    MetricCallback,
-    configure_logger,
-    print_time,
-    print_memory_usage)
+from augmentations import apply_tranformations, transform_names, AugmentArguments
+from helper import prepare_example, prepare_dataset # preprocessing 
+from helper import compute_metrics 
+from helper import DataCollatorCTCWithPadding, CTCTrainer, MetricCallback # classes 
+from helper import configure_logger, print_time, print_memory_usage
+from helper import DataArguments, ModelArguments
 
 # Check device and initiate logger
 device: torch.device = torch.device(
@@ -43,18 +38,18 @@ logger = logging.getLogger(__name__)
 
 
 def get_df(lang: Literal["fi", "sv"],
-           data_args: Dict[str, Any]) -> pd.DataFrame:
+           data_args: DataArguments) -> pd.DataFrame:
     """Load csv file based on lang
 
     Args:
         lang (str): either fi or sv
-        data_args (Dict[str, Any]): data args defined in config.yml
+        data_args (DataArguments): data args defined in config.yml
 
     Returns:
         pd.DataFrame: summary of the training and val data
     """
-    csv_key = "csv_fi" if lang == "fi" else "csv_sv"
-    csv_path: Optional[str] = data_args[csv_key]
+    csv_path: Optional[str] = data_args.csv_fi if lang == "fi" else data_args.csv_sv
+
     try:
         df = pd.read_csv(csv_path,
                          encoding="utf-8",
@@ -67,7 +62,7 @@ def get_df(lang: Literal["fi", "sv"],
 def load_speech(train_dataset: Dataset,
                 val_dataset: Dataset,
                 processor: Wav2Vec2Processor,
-                data_args: Dict[str, Any]) -> Tuple[Dataset, Dataset]:
+                data_args: DataArguments) -> Tuple[Dataset, Dataset]:
     """Load speech data with prepare_example function. 
     New columns after this step: speech, sampling_rate, duration_seconds
     Existing text column will be pre-processed a well. 
@@ -76,12 +71,12 @@ def load_speech(train_dataset: Dataset,
         train_dataset (Dataset)
         val_dataset (Dataset)
         processor (Wav2Vec2Processor): pre-trained processor, used to get vocab
-        data_args (Dict[str, Any]): data config loaded from config.yml
+        data_args (DataArguments): data config loaded from config.yml
 
     Returns:
         Tuple[Dataset, Dataset]: dataset for training and validation
     """
-    target_sr: int = data_args["target_feature_extractor_sampling_rate"]
+    target_sr: int = data_args.target_feature_extractor_sampling_rate
 
     # define data regex text cleaner to process text
     vocab_chars: str = "".join(t for t in processor.tokenizer.get_vocab().keys() if len(t) == 1)
@@ -111,8 +106,8 @@ def load_speech(train_dataset: Dataset,
 def extract_features(train_dataset: Dataset, 
                      val_dataset: Dataset, 
                      processor: Wav2Vec2Processor, 
-                     data_args: Dict[str, Any], 
-                     training_args: Dict[str, Any]) -> Tuple[Dataset, Dataset]:
+                     data_args: DataArguments, 
+                     training_args: TrainingArguments) -> Tuple[Dataset, Dataset]:
     """Process data with the prepare_dataset function
     New columns after this step: input_values, labels
 
@@ -120,14 +115,14 @@ def extract_features(train_dataset: Dataset,
         train_dataset (Dataset)
         val_dataset (Dataset)
         processor (Wav2Vec2Processor): pre-trained processor, used to process speech and text
-        data_args (Dict[str, Any]): data args read from config.yml
-        training_args (Dict[str, Any]): training args read from config.yml
+        data_args (DataArguments): data args read from config.yml
+        training_args (TrainingArguments): training args read from config.yml
 
     Returns:
         Tuple[Dataset, Dataset]: train and val data set ready for training
     """
     
-    target_sr: int = data_args["target_feature_extractor_sampling_rate"]
+    target_sr: int = data_args.target_feature_extractor_sampling_rate
 
     # Pass the first two arguments to the function
     prepare_dataset_partial = partial(prepare_dataset, processor, target_sr)
@@ -139,7 +134,7 @@ def extract_features(train_dataset: Dataset,
         prepare_dataset_partial,
         num_proc=num_proc,
         batched=True,
-        batch_size=training_args["per_device_train_batch_size"])
+        batch_size=training_args.per_device_train_batch_size)
     logger.debug(f"Training set (N={len(train_dataset)}): features and labels sucessfully extracted. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
 
@@ -149,7 +144,7 @@ def extract_features(train_dataset: Dataset,
         prepare_dataset_partial,
         num_proc=num_proc,
         batched=True,
-        batch_size=training_args["per_device_eval_batch_size"])
+        batch_size=training_args.per_device_eval_batch_size)
     logger.debug(f"Validation set (N={len(val_dataset)}): features and labels sucessfully extracted. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
 
@@ -159,13 +154,13 @@ def extract_features(train_dataset: Dataset,
 # functions related to processor and model
 
 def load_processor_and_model(path: str,
-                             model_args: Dict[str, Any]
+                             model_args: ModelArguments
                              ) -> Tuple[Wav2Vec2Processor, Wav2Vec2ForCTC]:
     """Loads the processor and model from pre-trained
 
     Args:
         path (str): path to the pre-trained model
-        model_args (Dict[str, Any]): model arguments loaded from config.yml
+        model_args (ModelArguments): model arguments loaded from config.yml
 
     Returns:
         Tuple[Wav2Vec2Procesor, Wav2Vec2ForCTC]: processor and model for training
@@ -174,7 +169,7 @@ def load_processor_and_model(path: str,
     start = time.time()
     processor = Wav2Vec2Processor.from_pretrained(
         path,
-        cache_dir=model_args.get("cache_dir", "./cache")
+        cache_dir=model_args.cache_dir
     )
     logger.debug(f"Pre-trained processor loaded. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
@@ -183,14 +178,14 @@ def load_processor_and_model(path: str,
     start = time.time()
     model = Wav2Vec2ForCTC.from_pretrained(
         path,
-        cache_dir=model_args.get("cache_dir", "./cache"),
+        cache_dir=model_args.cache_dir,
         pad_token_id=processor.tokenizer.pad_token_id,
         vocab_size=len(processor.tokenizer)
     )
     logger.debug(f"Pre-trained model loaded. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
 
-    if model_args.get("freeze_feature_encoder", True):
+    if model_args.freeze_feature_encoder:
         model.freeze_feature_encoder()
 
     return processor, model
@@ -204,7 +199,7 @@ def run_train(fold: int,
               model: Wav2Vec2ForCTC,
               train_dataset: Dataset,
               val_dataset: Dataset,
-              training_args: Dict[str, Any]) -> None:
+              training_args: TrainingArguments) -> None:
     """Initialise trainer and  run training
 
     Args:
@@ -213,11 +208,10 @@ def run_train(fold: int,
         model (Wav2Vec2ForCTC)
         train_dataset (Dataset)
         val_dataset (Dataset)
-        training_args (Dict[str, Any]): args used to create TrainingArgument
+        training_args (TrainingArguments): args used to create TrainingArgument
     """
 
-    data_collator = DataCollatorCTCWithPadding(
-        processor=processor, padding=True)
+    data_collator = DataCollatorCTCWithPadding(processor=processor, padding=True)
 
     # Set up compute metric function
     wer_metric: Metric = evaluate.load("wer")
@@ -226,9 +220,8 @@ def run_train(fold: int,
         compute_metrics, processor, wer_metric, cer_metric)
 
     # Update output dir based on fold
-    output_dir = training_args.get("output_dir", "output")
-    training_args["output_dir"] = f"{output_dir[:-1]}{fold}" if output_dir[-1].isnumeric() else f"{output_dir}_fold_{fold}"
-    training_args = TrainingArguments(**training_args)
+    output_dir = training_args.output_dir
+    training_args.output_dir = f"{output_dir[:-1]}{fold}" if output_dir[-1].isnumeric() else f"{output_dir}_fold_{fold}"
 
     # Set up trainer
     trainer = CTCTrainer(
@@ -278,19 +271,19 @@ if __name__ == "__main__":
     with open('config.yml', 'r') as file:
         train_config = yaml.safe_load(file)
 
-    data_args: Dict[str, Union[bool, str, int]] = train_config["data_args"]
-    model_args: Dict[str, Union[bool, str, int]] = train_config["model_args"]
-    training_args: Dict[str, Union[bool, str, int]] = train_config["training_args"]
+    data_args = DataArguments(**train_config["data_args"])
+    model_args = ModelArguments(**train_config["model_args"])
+    training_args = TrainingArguments(**train_config["training_args"])
     # training_args["local_rank"] = int(os.environ["LOCAL_RANK"])
 
     # -- configure logger, log cuda info
-    verbose_logging: bool = model_args.get("verbose_logging", True)
+    verbose_logging: bool = model_args.verbose_logging
     configure_logger(verbose_logging)
 
     logger.debug(f"Running on {device}")
     if device != torch.device("cuda"):
         # mix precision training only avaible for cuda
-        training_args["fp16"] = False
+        training_args.fp16 = False
         logger.warning("Cuda is not available!")
         logger.debug(f"Training {args.lang} model.")
     else:
@@ -301,11 +294,10 @@ if __name__ == "__main__":
     df: pd.DataFrame = get_df(args.lang, data_args)
     if args.test:
         df = df[:30]
-        training_args["num_train_epochs"] = 1
+        training_args.num_train_epochs = 1
 
     # 3. Fetch the path of the pre-trained model
-    key = "fi_pretrained" if args.lang == "fi" else "sv_pretrained"
-    pretrained_name_or_path: Optional[str] = model_args[key]
+    pretrained_name_or_path: str = model_args.fi_pretrained if args.lang == "fi" else model_args.sv_pretrained
 
     # 4. Run k-fold
     print(f"********** Runing fold {args.fold} ********** ")
@@ -327,7 +319,7 @@ if __name__ == "__main__":
     if args.augment:
         assert args.augment in transform_names, f"Expect {transform_names}, got {args.augment}"
         print(f"AUGMENT DATA, METHOD: {args.augment}")
-        augment_args: Dict[str, Any] = train_config["augment_args"]
+        augment_args = AugmentArguments(**train_config["augment_args"])
         train_dataset = apply_tranformations(train_dataset, data_args, augment_args, args.augment)
     
     print("EXTRACT FEATURES")

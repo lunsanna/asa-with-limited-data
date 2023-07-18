@@ -7,6 +7,7 @@ from .transform import (apply_tranformations,
                         tempo_perturbation,
                         transform_dict,
                         transform_names)
+from .AugmentArguments import AugmentArguments
 
 __all__ = [
     'apply_tranformations', 
@@ -17,5 +18,6 @@ __all__ = [
     'band_reject',
     'tempo_perturbation',
     'transform_dict',
-    'transform_names'
+    'transform_names', 
+    'AugmentArguments'
 ]
