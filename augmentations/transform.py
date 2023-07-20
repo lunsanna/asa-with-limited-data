@@ -157,8 +157,8 @@ def band_reject(data_args: DataArguments,
     speech = example["speech"]
     speech = speech if speech.ndim == 2 else speech.unsqueeze(dim=0)
     assert speech.ndim == 2 and speech.size(0) == 1
+
     max_mask_proportion = transform_args.max_mask_proportion
-    assert max_mask_proportion > 0 and max_mask_proportion < 1
     sampling_rate: int = data_args.target_feature_extractor_sampling_rate
 
     mask_width = np.random.randint(0, transform_args.max_mask_width)
@@ -230,7 +230,8 @@ transform_dict = {
     "tempo_perturbation": tempo_perturbation
 }
 
-transform_names = transform_dict.keys()
+transform_names = list(transform_dict.keys())
+transform_names.append("random_transforms")
 
 def apply_tranformations(train_dataset: Dataset,
                          data_args: DataArguments,
