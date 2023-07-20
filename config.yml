@@ -1,7 +1,6 @@
-# This config file contains all the params used for training
-# Some of them are taken from Yaroslav's shell script
+# ALL hyper-parameters are defined in this config file
 
-# TODO: revise and remove unused ones
+# Some of them are taken from Yaroslav's shell script
 
 model_args:
   # The name or path of the pre-trained model to use as a starting point
@@ -11,7 +10,7 @@ model_args:
   fi_pretrained: "/scratch/elec/puhe/p/getmany1/wav2vec2_large_14.2k_fi_donatespeech_100h_SEGMENTED_13042022_60ep/checkpoint-11100"
 
   # Directory to store output files, including model checkpoints
-  output_dir: "output"
+  # output_dir: "output"
 
   # Directory to store cached files for faster data loading
   cache_dir: "cache"
@@ -24,17 +23,16 @@ model_args:
 
 data_args:
   # The path of the dataset to use, not on git 
-  csv_fi: "finnish_df.csv"
-  csv_sv: "swedish_df.csv"
+  csv_fi: "csv/finnish_df.csv"
+  csv_sv: "csv/swedish_df.csv"
 
   # The name of the training split
-  train_split_name: "train"
+  # train_split_name: "train"
 
   # The name of the validation split, "train" for training error, "validation" for test error
-  validation_split_name: "train"
+  # validation_split_name: "train"
 
-  # The orthography used for normalization and tokenization: 'librispeech' (default), 'timit', or 'buckwalter'.
-  orthography: "timit"
+  # orthography: "timit"
 
   # Target sampling rate for the feature extractor, replace with a specific value
   target_feature_extractor_sampling_rate: 16000
@@ -43,8 +41,10 @@ data_args:
   # TODO: Handle this in the python code.
   # preprocessing_num_workers: "$(nproc)"
 
-
+# used to create TrainAguments
 training_args:
+  output_dir: "output"
+  
   # Number of training epochs
   num_train_epochs: 20
 
@@ -56,9 +56,6 @@ training_args:
 
   # Number of steps to accumulate gradients before performing an update
   gradient_accumulation_steps: 4
-
-  # The maximum number of model checkpoint files to keep
-  save_total_limit: 5
 
   # The strategy for evaluation during training, "steps" means evaluating at each logging step
   evaluation_strategy: "epoch"
@@ -87,8 +84,9 @@ training_args:
   # The backend to use for half precision, "cuda_amp" for NVIDIA's Automatic Mixed Precision
   half_precision_backend: "cuda_amp"
 
-  # Whether to load the best model found during training at the end of training
-  load_best_model_at_end: true
+  # With the following setting, only the last checkpoint is saved
+  load_best_model_at_end: false
+  save_total_limit: 1
 
   # The metric to use to determine the best model
   metric_for_best_model: "wer"
@@ -98,15 +96,49 @@ training_args:
 
   # ddp_find_unused_parameters: true
 
+augment_args:
+  # true = double the amount of training by adding an augmented copy 
+  # false = use only the augmented copy 
+  copy: true
 
+  time_masking:
+    # the max proportion of masked time steps, 0.2 means max 20% of the speech will be masked 
+    max_mask_proportion: 0.3
 
+    # the max window size of each mask, will be uniformly chosen in (0, 0.2]
+    # unit: second (0.2 == 200 ms)
+    # range of phonemem duration
+    max_mask_size: 0.2
 
+  band_reject:
+    # the window width of the mask , constant
+    max_mask_width: 64
+    # the max proportion of masked channels in the range specified above
+    max_mask_proportion: 0.4  
 
+  pitch_shift:
+    # unit: cent, 
+    # pitch shift factor sampled from Gaussian(0, sigma)
+    sigma: 50
+  
+  reverberation: 
+    room_size_sigma: 60
 
+  additive_noise:
+    # the dir that contains the noise samples
+    noise_dir: "noise-free-sound"
 
+    # snr range
+    snr_low: 10
+    snr_high: 50
+  
 
-
-
+  tempo_perturbation: 
+    perturbation_factors:
+      - 0.9
+      - 0.95
+      - 1.05
+      - 1.1
 
 
 

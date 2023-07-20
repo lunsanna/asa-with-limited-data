@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DataCollatorCTCWithPadding:
     """
+    This class is copied from a Hugging face tutorial 
     A custom data collator that handles inputs and labels differently due to their stark difference in seq length.
     Args:
         processor (transformers.Wav2Vec2Processor)
@@ -70,10 +71,10 @@ class DataCollatorCTCWithPadding:
         batch["labels"] = labels
         return batch
     
-
 class CTCTrainer(Trainer):
     def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
         """
+        This class is copied from Yaroslav's code 
         Perform a training step on a batch of inputs.
 
         Subclass and override to inject custom behavior.
@@ -123,7 +124,6 @@ class CTCTrainer(Trainer):
 
         return loss.detach()
     
-
 class MetricCallback(TrainerCallback):
     def on_epoch_begin(self, args, state: TrainerState, control:TrainerControl, **kwargs):
         logger.debug(f"----------- Starting epoch {state.epoch + 1} -----------")
