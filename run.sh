@@ -13,7 +13,7 @@ module load anaconda
 module load cuda 
 source activate w2v2
 
-srun python -u finetune.py \
+srun python -u run_finetune.py \
 --lang=fi \
 --fold=$SLURM_ARRAY_TASK_ID \
 # --augment=time_masking \
