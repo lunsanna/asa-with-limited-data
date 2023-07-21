@@ -9,11 +9,6 @@ from helper import DataArguments, ModelArguments, print_time
 from run_finetune import load_speech, extract_features
 from typing import Dict, Any
 
-
-def true_round(x):
-    """The rounded scheme used in Yaroslav's analysis."""
-    return int(decimal.Decimal(str(x)).quantize(decimal.Decimal("1"), rounding=decimal.ROUND_HALF_UP))
-
 def get_prediction(processor: Wav2Vec2Processor, 
                    model: Wav2Vec2ForCTC,
                    device: torch.device, 
@@ -74,7 +69,6 @@ if __name__ == "__main__":
     except FileNotFoundError:
         df = pd.read_csv(f"../{data_args.csv_fi}")
         
-    df["cefr_mean"] = df["cefr_mean"].map(vectorize(true_round))
     df = df.rename(columns={"recording_path":"file_path", 
                             "transcript_normalized":"text"})
     
