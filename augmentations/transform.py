@@ -207,9 +207,7 @@ def tempo_perturbation(data_args: DataArguments,
     example["speech"] = speech.squeeze()
     return example
 
-def copy_original(data_args: DataArguments,
-                  transform_args: TempoPerturbArgs,
-                  example: Dict[str, Any]) -> Dict[str, Any]:
+def copy_original(example: Dict[str, Any]) -> Dict[str, Any]:
     """Apply no transformations"""
     return example
 
@@ -219,10 +217,11 @@ def random_transform(data_args: DataArguments,
     speech = example["speech"]
     speech = speech if speech.ndim == 2 else speech.unsqueeze(dim=0)
 
-    # 1. decide how many augmentations to perform 1-3
-    n_augment = np.random.randint(1, 4)
+    # 1. decide how many augmentations to perform 
+    n_augment = np.random.randint(1, augment_args.max_num_of_transforms+1)
 
     # 2. apply augmentations
+    del transform_dict["copy_original"]
     for _ in range(n_augment):
         transform_name = np.random.choice(list(transform_dict.keys()))
         transform = transform_dict[transform_name]
@@ -251,6 +250,8 @@ def apply_tranformations(train_dataset: Dataset,
     if augment_name == "random_transforms":
         transform = random_transform
         transform_partial = partial(transform, data_args, augment_args)
+    elif augment_name == "copy_original":
+        transform_partial = copy_original
     else:
         transform = transform_dict[augment_name]
         transform_args = getattr(augment_args, augment_name)
