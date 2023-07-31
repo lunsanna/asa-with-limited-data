@@ -41,10 +41,7 @@ if __name__ == "__main__":
     model_path = f"{args.partial_model_path}{args.fold}"
 
     # Load arguments 
-    try:
-        train_config = get_config("config.yml")
-    except OSError or TypeError:
-        train_config = get_config("../config.yml")
+    train_config = get_config("config.yml")
     
     data_args = DataArguments(**train_config["data_args"])
     model_args = ModelArguments(**train_config["model_args"])
