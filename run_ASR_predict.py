@@ -1,6 +1,5 @@
 import pandas as pd 
-from numpy import vectorize
-import decimal, yaml, argparse, time, glob
+import yaml, argparse, time, glob
 import torch
 from functools import partial 
 from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC, TrainingArguments

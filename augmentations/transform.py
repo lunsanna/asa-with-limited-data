@@ -1,12 +1,8 @@
 from WavAugment import augment
 from datasets import Dataset, concatenate_datasets
 from functools import partial
-from random import choice
-import logging
-import time 
+import time, copy, glob, logging
 import numpy as np
-import copy
-import glob
 import torchaudio
 
 from helper import print_time, DataArguments
@@ -120,7 +116,7 @@ def additive_noise(data_args: DataArguments,
     noise_paths = glob.glob(f"{noise_dir}/*.wav")
     noise_paths = noise_paths if len(
         noise_paths) > 0 else glob.glob(f"../{noise_dir}/*")
-    random_noise_path: str = choice(noise_paths)
+    random_noise_path: str = np.random.choice(noise_paths)
     noise, noise_sr = torchaudio.load(random_noise_path)
     if noise_sr != sampling_rate:
         resampler = torchaudio.transforms.Resample(noise_sr, sampling_rate)
@@ -197,7 +193,7 @@ def tempo_perturbation(data_args: DataArguments,
     assert speech.ndim == 2 
 
     perturb_factors: List[int] = transform_args.perturbation_factors
-    perturb_factor: int = choice(perturb_factors)
+    perturb_factor: int = np.random.choice(perturb_factors)
     sampling_rate: int = data_args.target_feature_extractor_sampling_rate
 
 
@@ -216,8 +212,16 @@ def random_transform(data_args: DataArguments,
                      example: Dict[str, Any]) -> Dict[str, Any]:
     speech = example["speech"]
     speech = speech if speech.ndim == 2 else speech.unsqueeze(dim=0)
-    example = time_masking(data_args, getattr(augment_args, "time_masking"), example)
-    example = band_reject(data_args, getattr(augment_args, "band_reject"), example)
+
+    # 1. decide how many augmentations to perform 1-3
+    n_augment = np.random.randint(1, 4)
+
+    # 2. apply augmentations
+    for _ in range(n_augment):
+        transform_name = np.random.choice(list(transform_dict.keys()))
+        transform = transform_dict[transform_name]
+        example = transform(data_args, getattr(augment_args, transform_name), example)
+
     return example
     
 

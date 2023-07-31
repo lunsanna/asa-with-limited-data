@@ -48,10 +48,12 @@ def get_df(lang: Literal["fi", "sv"],
     csv_path: Optional[str] = data_args.csv_fi if lang == "fi" else data_args.csv_sv
 
     try:
-        df = pd.read_csv(csv_path, encoding="utf-8",
+        df = pd.read_csv(csv_path, encoding="utf-8", usecols=["recording_path", "transcript_normalized", "split"])
+    except FileNotFoundError:
+        df = pd.read_csv(f"../{csv_path}", encoding="utf-8",
                          usecols=["recording_path", "transcript_normalized", "split"])
-    except:
-        FileNotFoundError(f"The data summary file {csv_path} not found, please check the file path in config.yml.")
+        
+    # rename columns
     df.columns = ["file_path", "split", "text"]
     return df
 
@@ -268,7 +270,7 @@ if __name__ == "__main__":
     else:
         logger.debug(f"Cuda count: {torch.cuda.device_count()}")
 
-    training_args = TrainingArguments(training_args)
+    training_args = TrainingArguments(**training_args)
     # training_args["local_rank"] = int(os.environ["LOCAL_RANK"])
 
     # 2. Load csv file containing data summary
