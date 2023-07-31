@@ -50,7 +50,7 @@ def get_df(lang: Literal["fi", "sv"],
     try:
         df = pd.read_csv(csv_path, encoding="utf-8", usecols=["recording_path", "transcript_normalized", "split"])
     except FileNotFoundError:
-        df = pd.read_csv(f"../{csv_path}", encoding="utf-8",
+        df = pd.read_csv(f"../../{csv_path}", encoding="utf-8",
                          usecols=["recording_path", "transcript_normalized", "split"])
         
     # rename columns
