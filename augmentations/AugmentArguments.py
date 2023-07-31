@@ -44,13 +44,17 @@ class TempoPerturbArgs(object):
 class AugmentArguments(object):
     def __init__(self, 
                  copy: bool = True,
+                 max_num_of_transforms: int = 4,
                  time_masking: Dict = None, 
                  band_reject: Dict = None, 
                  pitch_shift: Dict = None, 
                  reverberation: Dict = None, 
                  additive_noise: Dict = None, 
                  tempo_perturbation: Dict = None):
+        
         self.copy = copy 
+        self.max_num_of_transforms = max_num_of_transforms
+        
         self.time_masking = TimeMaskingArgs(**time_masking) if time_masking else TimeMaskingArgs()
         self.band_reject = BandRejectArgs(**band_reject) if band_reject else BandRejectArgs()
         self.pitch_shift = PitchShiftArgs(**pitch_shift) if pitch_shift else PitchShiftArgs()
