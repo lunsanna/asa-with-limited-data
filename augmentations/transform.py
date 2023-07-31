@@ -207,6 +207,12 @@ def tempo_perturbation(data_args: DataArguments,
     example["speech"] = speech.squeeze()
     return example
 
+def copy_original(data_args: DataArguments,
+                  transform_args: TempoPerturbArgs,
+                  example: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply no transformations"""
+    return example
+
 def random_transform(data_args: DataArguments, 
                      augment_args: AugmentArguments,
                      example: Dict[str, Any]) -> Dict[str, Any]:
@@ -235,7 +241,7 @@ transform_dict = {
 }
 
 transform_names = list(transform_dict.keys())
-transform_names.append("random_transforms")
+transform_names.extend(["random_transforms", "copy_original"]) # Pseudo transforms
 
 def apply_tranformations(train_dataset: Dataset,
                          data_args: DataArguments,
