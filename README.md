@@ -14,14 +14,13 @@ Since the data is not public as of the creating of project, you will need access
 
 ### Get started 
 1. Clone this repo and cd into it
-2. Copy the csv files that contains the data summary to this directory
-```
-cp /scratch/work/lunt1/wav2vec2-finetune/finnish_df.csv .
-cp /scratch/work/lunt1/wav2vec2-finetune/swedish_df.csv .
-```
-3. Create conda env 
+2. Create conda env 
 ```
 conda env create --file environment.yml
+```
+3. Install WavAugment 
+```
+git clone git@github.com:facebookresearch/WavAugment.git && cd WavAugment && python setup.py develop
 ```
 4. Run the code on Triton
 - Check `config.yml` to see if all parameters look good. 
