@@ -211,7 +211,7 @@ def copy_original(example: Dict[str, Any]) -> Dict[str, Any]:
     """Apply no transformations"""
     return example
 
-def random_transform(data_args: DataArguments, 
+def random_transforms(data_args: DataArguments, 
                      augment_args: AugmentArguments,
                      example: Dict[str, Any]) -> Dict[str, Any]:
     speech = example["speech"]
@@ -221,7 +221,6 @@ def random_transform(data_args: DataArguments,
     n_augment = np.random.randint(1, augment_args.max_num_of_transforms+1)
 
     # 2. apply augmentations
-    del transform_dict["copy_original"]
     for _ in range(n_augment):
         transform_name = np.random.choice(list(transform_dict.keys()))
         transform = transform_dict[transform_name]
@@ -248,7 +247,7 @@ def apply_tranformations(train_dataset: Dataset,
                          augment_name: str) -> Dataset:
     start = time.time()
     if augment_name == "random_transforms":
-        transform = random_transform
+        transform = random_transforms
         transform_partial = partial(transform, data_args, augment_args)
     elif augment_name == "copy_original":
         transform_partial = copy_original
