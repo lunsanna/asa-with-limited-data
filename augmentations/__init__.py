@@ -7,7 +7,7 @@ from .transform import (apply_tranformations,
                         tempo_perturbation,
                         transform_dict,
                         transform_names, 
-                        random_transform)
+                        random_transforms)
 from .AugmentArguments import AugmentArguments
 
 __all__ = [
@@ -20,6 +20,6 @@ __all__ = [
     'tempo_perturbation',
     'transform_dict',
     'transform_names', 
-    'random_transform',
+    'random_transforms',
     'AugmentArguments', 
 ]
