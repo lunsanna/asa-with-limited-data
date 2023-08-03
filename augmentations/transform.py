@@ -111,35 +111,30 @@ def additive_noise(data_args: DataArguments,
     snr_high: int = transform_args.snr_high
     sampling_rate: int = data_args.target_feature_extractor_sampling_rate
 
-    # choose random noise sample from Musan
-    noise_dir = transform_args.noise_dir
-    noise_paths = glob.glob(f"{noise_dir}/*.wav")
-    noise_paths = noise_paths if len(
-        noise_paths) > 0 else glob.glob(f"../{noise_dir}/*")
-    random_noise_path: str = np.random.choice(noise_paths)
-    noise, noise_sr = torchaudio.load(random_noise_path)
-    if noise_sr != sampling_rate:
-        resampler = torchaudio.transforms.Resample(noise_sr, sampling_rate)
-        noise = resampler(noise)
+    def noise_generator():
+        # choose random noise sample from Musan
+        noise_paths = glob.glob(f"{transform_args.noise_dir}/*.wav")
+        random_noise_path = np.random.choice(noise_paths)
+        noise, noise_sr = torchaudio.load(random_noise_path)
+        if noise_sr != sampling_rate:
+            resampler = torchaudio.transforms.Resample(noise_sr, sampling_rate)
+            noise = resampler(noise)
 
-    # adjust length to match speech
-    speech_len: int = speech.size(1)
-    noise_len: int = noise.size(1)
-    assert speech_len > 0 and noise_len > 0, f"Speech: {speech_len}, noise: {noise_len}"
+        # adjust length to match speech
+        speech_len: int = speech.size(1)
+        noise_len: int = noise.size(1)
 
-    if speech_len > noise_len:
-        repeat_factor: int = speech_len//noise_len + 1
-        noise = noise.repeat(1, repeat_factor)
-    noise = noise[:, :speech_len]
-    assert speech.size() == noise.size()
+        if speech_len > noise_len:
+            noise = noise.repeat(1, speech_len // noise_len + 1 )
+
+        return noise[:, :speech_len] 
 
     # add noise
     snr = np.random.randint(snr_low, snr_high+1)
-    snr_linear = 10**(snr/10)
-    speech_power = (speech**2).mean()
-    noise_power = (noise**2).mean()
-    noise_factor = np.sqrt(speech_power/(noise_power*snr_linear))
-    example["speech"] = speech + noise_factor * noise
+    example["speech"] = augment.EffectChain() \
+        .additive_noise(noise_generator, snr) \
+        .apply(speech, {'rate':sampling_rate}, {'rate': sampling_rate})
+    
     # adjust dim
     example["speech"] = example["speech"].squeeze()
 
@@ -154,11 +149,10 @@ def band_reject(data_args: DataArguments,
     speech = speech if speech.ndim == 2 else speech.unsqueeze(dim=0)
     assert speech.ndim == 2 and speech.size(0) == 1
 
-    max_mask_proportion = transform_args.max_mask_proportion
     sampling_rate: int = data_args.target_feature_extractor_sampling_rate
 
     mask_width = np.random.randint(0, transform_args.max_mask_width)
-    n_mask = int((sampling_rate/2)*max_mask_proportion//transform_args.max_mask_width)
+    n_mask = np.random.choice([1,2])
 
     # the following two lines are taken from Introduction to Speech Processing by Tom Bäckström et el
     # https://speechprocessingbook.aalto.fi/Representations/Melcepstrum.html?highlight=mel

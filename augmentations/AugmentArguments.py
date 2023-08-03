@@ -10,11 +10,8 @@ class TimeMaskingArgs(object):
 
 class BandRejectArgs(object):
     def __init__(self, 
-                 max_mask_width: int = 64, 
-                 max_mask_proportion: float = 0.4) -> None:
+                 max_mask_width: int = 64) -> None:
         self.max_mask_width = max_mask_width
-        self.max_mask_proportion = max_mask_proportion
-        assert self.max_mask_proportion <= 1, f"Proportion must ben <= 1, got {self.max_mask_proportion}"
 
 class PitchShiftArgs(object):
     def __init__(self, 
