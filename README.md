@@ -7,8 +7,11 @@ Since the data is not public as of the creating of project, you will need access
 ### Brief description
 - `config.yml` contains all the model, data and training parameters.
 - `environment.yml` defines the conda env that the code is run on.
-- `finetune.py` fine-tunes the model pre-trained on native speech. 
-- `run.sh` runs `finetune.py` on Triton.
+- `run_finetune.py` fine-tunes the model pre-trained on native speech. 
+- `run_predict.py` used fine-tuned models for prediction. 
+- `run_finetune.sh` runs `run_finetune.py` on Triton.
+- `run_predict.sh` runs `run_predict.py` on Triton.
+- `augmentations` folder contains everything to do with data augmentation. 
 - `helper` folder contains all the functions that are not directly run in main(). 
 - `others` files that are reference and can be remove later. 
 
