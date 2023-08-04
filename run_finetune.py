@@ -36,23 +36,9 @@ logger = logging.getLogger(__name__)
 
 def get_df(lang: Literal["fi", "sv"],
            data_args: DataArguments) -> pd.DataFrame:
-    """Load csv file based on lang
-
-    Args:
-        lang (str): either fi or sv
-        data_args (DataArguments): data args defined in config.yml
-
-    Returns:
-        pd.DataFrame: summary of the training and val data
-    """
+    """Load csv file based on lang"""
     csv_path: Optional[str] = data_args.csv_fi if lang == "fi" else data_args.csv_sv
-
-    try:
-        df = pd.read_csv(csv_path, encoding="utf-8", usecols=["recording_path", "transcript_normalized", "split"])
-    except FileNotFoundError:
-        df = pd.read_csv(f"../../{csv_path}", encoding="utf-8",
-                         usecols=["recording_path", "transcript_normalized", "split"])
-        
+    df = pd.read_csv(csv_path, encoding="utf-8", usecols=["recording_path", "transcript_normalized", "split"])
     # rename columns
     df.columns = ["file_path", "split", "text"]
     return df
@@ -62,17 +48,8 @@ def load_speech(name: Literal["train", "val"],
                 processor: Wav2Vec2Processor,
                 data_args: DataArguments, 
                 remove_columns: List[str]=[]) -> Dataset:
-    """Load speech data with prepare_example function. 
+    """Load speech data and pre-process text with prepare_example function
     New columns after this step: speech, sampling_rate, duration_seconds
-    Existing text column will be pre-processed a well. 
-
-    Args:
-        dataset (Dataset): dataset to be processed
-        processor (Wav2Vec2Processor): pre-trained processor, used to get vocab
-        data_args (DataArguments): data config loaded from config.yml
-
-    Returns:
-        Dataset: dataset after processing
     """
     target_sr: int = data_args.target_feature_extractor_sampling_rate
 
@@ -100,16 +77,6 @@ def extract_features(name: Literal["train", "val"],
                      training_args: TrainingArguments) -> Dataset:
     """Process data with the prepare_dataset function
     New columns after this step: input_values, labels
-
-    Args:
-        name (str)
-        dataset (Dataset): dataset to be processed 
-        processor (Wav2Vec2Processor): pre-trained processor, used to process speech and text
-        data_args (DataArguments): data args read from config.yml
-        training_args (TrainingArguments): training args read from config.yml
-
-    Returns:
-        Dataset: dataset after processing
     """
     
     target_sr: int = data_args.target_feature_extractor_sampling_rate
@@ -137,15 +104,7 @@ def extract_features(name: Literal["train", "val"],
 def load_processor_and_model(path: str,
                              model_args: ModelArguments
                              ) -> Tuple[Wav2Vec2Processor, Wav2Vec2ForCTC]:
-    """Loads the processor and model from pre-trained
-
-    Args:
-        path (str): path to the pre-trained model
-        model_args (ModelArguments): model arguments loaded from config.yml
-
-    Returns:
-        Tuple[Wav2Vec2Procesor, Wav2Vec2ForCTC]: processor and model for training
-    """
+    """Loads the processor and model from pre-trained"""
     # 1. Load pre-trained processor, Wav2Vec2Processor
     start = time.time()
     processor = Wav2Vec2Processor.from_pretrained(
@@ -181,16 +140,7 @@ def run_train(fold: int,
               train_dataset: Dataset,
               val_dataset: Dataset,
               training_args: TrainingArguments) -> None:
-    """Initialise trainer and  run training
-
-    Args:
-        fold (int)
-        processor (Wav2Vec2Processor)
-        model (Wav2Vec2ForCTC)
-        train_dataset (Dataset)
-        val_dataset (Dataset)
-        training_args (TrainingArguments): args used to create TrainingArgument
-    """
+    """Initialise trainer and  run training"""
 
     data_collator = DataCollatorCTCWithPadding(processor=processor, padding=True)
 
