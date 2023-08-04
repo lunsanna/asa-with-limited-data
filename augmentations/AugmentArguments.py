@@ -41,7 +41,7 @@ class TempoPerturbArgs(object):
 class AugmentArguments(object):
     def __init__(self, 
                  copy: bool = True,
-                 max_num_of_transforms: int = 4,
+                 max_num_of_transforms: int = 2,
                  time_masking: Dict = None, 
                  band_reject: Dict = None, 
                  pitch_shift: Dict = None, 
