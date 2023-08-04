@@ -49,3 +49,21 @@ def compute_metrics(processor: Wav2Vec2Processor,
             logger.debug(f'prediction: "{prediction}"')
 
     return {"wer": wer, "cer": cer}
+
+def round_off(x:float):
+    """Used to round off the raitings. 
+    Randomly choose between rounding up or down if score is x.5. 
+
+    Args:
+        x (float): mean rating 
+
+    Returns:
+        int: the rounded rating
+    """
+    x_truncated = int(x) 
+    if x > x_truncated + 0.5: 
+        return int(x_truncated + 1)
+    elif x < x_truncated + 0.5:
+        return x_truncated
+    else:
+        return x_truncated + int(np.random.uniform() < 0.5)
