@@ -151,7 +151,7 @@ def band_reject(data_args: DataArguments,
 
     sampling_rate: int = data_args.target_feature_extractor_sampling_rate
 
-    mask_width = np.random.randint(0, transform_args.max_mask_width)
+    mask_width = np.random.randint(0, transform_args.max_mask_width) # mel 
     n_mask = np.random.choice([1,2])
 
     # the following two lines are taken from Introduction to Speech Processing by Tom Bäckström et el
@@ -159,11 +159,18 @@ def band_reject(data_args: DataArguments,
     def freq2mel(f): return 2595*np.log10(1 + (f/700))
     def mel2freq(m): return 700*(10**(m/2595) - 1)
 
-    mel_max = freq2mel(sampling_rate/2 - mask_width)
-    starts_mel = np.random.uniform(0, mel_max, n_mask)
-    starts_f = mel2freq(starts_mel).astype(int)
-    ends = starts_f + mask_width
-    bands_to_reject = list(zip(starts_f, ends))
+    mel_max = freq2mel(sampling_rate/2) - mask_width
+    start_mel = np.random.uniform(0, mel_max, n_mask)
+    end_mel = start_mel + mask_width
+    start_f = mel2freq(start_mel).astype(int)
+    end_f = mel2freq(end_mel).astype(int)
+    bands_to_reject = list(zip(start_f, end_f))
+
+    # mel_max = freq2mel(sampling_rate/2 - mask_width)
+    # starts_mel = np.random.uniform(0, mel_max, n_mask)
+    # starts_f = mel2freq(starts_mel).astype(int)
+    # ends = starts_f + mask_width
+    # bands_to_reject = list(zip(starts_f, ends))
 
     effects = [["sinc", "-a", "120", f"{f2}-{f1}"]
                for f1, f2 in bands_to_reject]
@@ -176,6 +183,7 @@ def band_reject(data_args: DataArguments,
     assert sr == sampling_rate
     example["speech"] = augmented_speech.squeeze()
 
+    print(start_f, mask_width)
     return example
 
 
