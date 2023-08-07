@@ -1,4 +1,5 @@
-from .transform import (apply_tranformations, 
+from .transform import (resample,
+                        apply_tranformations, 
                         time_masking,
                         pitch_shift, 
                         reverberation, 
@@ -11,6 +12,7 @@ from .transform import (apply_tranformations,
 from .AugmentArguments import AugmentArguments
 
 __all__ = [
+    'resample',
     'apply_tranformations', 
     'time_masking',
     'pitch_shift', 

@@ -1,9 +1,12 @@
 from WavAugment import augment
 from datasets import Dataset, concatenate_datasets
 from functools import partial
-import time, copy, glob, logging
+import time, copy, glob, logging, random
 import numpy as np
 import torchaudio
+from collections import Counter
+from helper import round_off
+from math import isclose
 
 from helper import print_time, DataArguments
 from .AugmentArguments import (AugmentArguments, 
@@ -183,7 +186,7 @@ def band_reject(data_args: DataArguments,
     assert sr == sampling_rate
     example["speech"] = augmented_speech.squeeze()
 
-    print(start_f, mask_width)
+    # print(start_f, mask_width)
     return example
 
 
@@ -221,10 +224,10 @@ def random_transforms(data_args: DataArguments,
 
     # 1. decide how many augmentations to perform 
     n_augment = np.random.randint(1, augment_args.max_num_of_transforms+1)
+    transform_names = np.random.choice(list(transform_dict.keys()), n_augment)
 
     # 2. apply augmentations
-    for _ in range(n_augment):
-        transform_name = np.random.choice(list(transform_dict.keys()))
+    for transform_name in transform_names:
         transform = transform_dict[transform_name]
         example = transform(data_args, getattr(augment_args, transform_name), example)
 
@@ -258,15 +261,51 @@ def apply_tranformations(train_dataset: Dataset,
         transform_args = getattr(augment_args, augment_name)
         transform_partial = partial(transform, data_args, transform_args)
 
-    augmented_set = copy.deepcopy(train_dataset)
-    augmented_set = augmented_set.map(transform_partial)
-
     if augment_args.copy:
+        augmented_set = copy.deepcopy(train_dataset)
+        augmented_set = augmented_set.map(transform_partial)
         train_dataset = concatenate_datasets([train_dataset, augmented_set]).shuffle()
     else:
-        train_dataset = augmented_set
+        train_dataset = train_dataset.map(transform_partial)
 
     logger.debug(f"Training set (N={len(train_dataset)}): augmented training data added. {print_time(start)}")
     return train_dataset
+
+def resample(train_dataset: Dataset, 
+             data_args: DataArguments, 
+             augment_args: AugmentArguments):
+    """Resample data to balanced out the data based on the chosen rating (default = cefr_mean)"""
+    start = time.time()
+    
+    train_copy = copy.deepcopy(train_dataset) # always create a copy 
+    ratings = [round_off(x) for x in train_copy["rating"].tolist()]
+
+    # calculate samlping rate
+    group_counts = Counter(ratings)
+    n_group = len(group_counts)
+    n_copy = 2 # double the dataset
+    avg_n_samples_per_gp = len(train_copy)*n_copy/n_group
+    n_samples = [(group, avg_n_samples_per_gp - count) for group, count in group_counts.items()]
+    assert all([n > 0 for _, n in n_samples]), f"This calculation does not work. Might have to re-design."
+    weights = {group: round(100*n/group_counts[group]) for group, n in n_samples}
+    resample_weights = [weights[r] for r in ratings]
+
+    # resample data based on weights
+    n = random.choices(range(len(train_copy)), weights=resample_weights, k=len(train_copy))
+    train_copy = train_copy.select(n) 
+
+    # augment only the copied dataset, using random_transforms
+    augment_args.copy = False
+    train_copy = apply_tranformations(train_copy, data_args, augment_args, "random_transforms")
+
+    # concat 
+    train_dataset = concatenate_datasets([train_dataset, train_copy]).shuffle()
+    rating_avg = sum(group_counts.keys())/len(group_counts)
+    actual_avg = sum(train_dataset["rating"])/len(train_dataset)
+    assert isclose(rating_avg, actual_avg,  rel_tol=0.1), f"Resampling failed."
+
+    logger.debug(f"Training set (N={len(train_dataset)}): data resampled. {print_time(start)}")
+    return train_dataset
+    
 
 

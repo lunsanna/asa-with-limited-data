@@ -41,6 +41,7 @@ class TempoPerturbArgs(object):
 class AugmentArguments(object):
     def __init__(self, 
                  copy: bool = True,
+                 resample_based_on: str = "cefr_mean",
                  max_num_of_transforms: int = 2,
                  time_masking: Dict = None, 
                  band_reject: Dict = None, 
@@ -51,6 +52,10 @@ class AugmentArguments(object):
         
         self.copy = copy 
         self.max_num_of_transforms = max_num_of_transforms
+
+        self.resample_based_on = resample_based_on
+        ratings = ["cefr_mean", "pronunciation_mean","fluency_mean", "accuracy_mean","range_mean","task_completion_mean"]
+        assert self.resample_based_on in ratings, f"Got {self.resample_based_on}, expect {ratings}"
         
         self.time_masking = TimeMaskingArgs(**time_masking) if time_masking else TimeMaskingArgs()
         self.band_reject = BandRejectArgs(**band_reject) if band_reject else BandRejectArgs()
