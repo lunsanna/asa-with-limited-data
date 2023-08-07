@@ -34,24 +34,25 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--fold", type=int, default=None, help="Fold number, 0-3")
     parser.add_argument("--partial_model_path", type=str, default=None, help="Path to model")
+    parser.add_argument("--lang", type=str, default="fi", help="fi or sv")
     args = parser.parse_args()
     assert args.fold in range(4), f"Expect fold 0-3, got {args.fold}"
 
-    # This line needs to be change for every run 
-    model_path = f"{args.partial_model_path}{args.fold}"
-
     # Load arguments 
-    train_config = get_config("config.yml")
-    
+    train_config = get_config("config.yml")    
     data_args = DataArguments(**train_config["data_args"])
     model_args = ModelArguments(**train_config["model_args"])
+    
+    model_path = f"{args.partial_model_path}{args.fold}"
+    pretrained_path = model_args.fi_pretrained if args.lang == "fi" else model_args.sv_pretrained
+
     if device != torch.device("cuda"):
         train_config["training_args"]["fp16"] = False
     training_args = TrainingArguments(**train_config["training_args"])
 
     # 1. Load processor and model 
     print("Load processor and model.")
-    processor = Wav2Vec2Processor.from_pretrained(model_args.fi_pretrained)
+    processor = Wav2Vec2Processor.from_pretrained(pretrained_path)
     try:
         model = Wav2Vec2ForCTC.from_pretrained(model_path)
     except OSError:
@@ -60,11 +61,8 @@ if __name__ == "__main__":
 
     # 2. Load df from csv
     print("Load df from csv")
-    try:
-        df = pd.read_csv(data_args.csv_fi)
-    except FileNotFoundError:
-        df = pd.read_csv(f"../{data_args.csv_fi}")
-        
+    csv_path = data_args.csv_fi if args.lang == "fi" else data_args.csv_sv
+    df = pd.read_csv(csv_path)
     df = df.rename(columns={"recording_path":"file_path", 
                             "transcript_normalized":"text"})
     
