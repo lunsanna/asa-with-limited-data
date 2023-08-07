@@ -5,7 +5,6 @@ import time, copy, glob, logging, random
 import numpy as np
 import torchaudio
 from collections import Counter
-from helper import round_off
 from math import isclose
 
 from helper import print_time, DataArguments
@@ -278,7 +277,7 @@ def resample(train_dataset: Dataset,
     start = time.time()
     
     train_copy = copy.deepcopy(train_dataset) # always create a copy 
-    ratings = [round_off(x) for x in train_copy["rating"].tolist()]
+    ratings = train_copy["rating"].tolist()
 
     # calculate samlping rate
     group_counts = Counter(ratings)
@@ -302,7 +301,7 @@ def resample(train_dataset: Dataset,
     train_dataset = concatenate_datasets([train_dataset, train_copy]).shuffle()
     rating_avg = sum(group_counts.keys())/len(group_counts)
     actual_avg = sum(train_dataset["rating"])/len(train_dataset)
-    assert isclose(rating_avg, actual_avg,  rel_tol=0.1), f"Resampling failed."
+    assert isclose(rating_avg, actual_avg,  rel_tol=0.1), f"Expect {actual_avg}, got {rating_avg}"
 
     logger.debug(f"Training set (N={len(train_dataset)}): data resampled. {print_time(start)}")
     return train_dataset
