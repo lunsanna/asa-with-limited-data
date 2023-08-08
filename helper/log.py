@@ -5,7 +5,6 @@ import time
 import psutil
 import os 
 import sys
-from typing import Any
 from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
 from torch.cuda import device_count
 
