@@ -272,7 +272,7 @@ def apply_tranformations(train_dataset: Dataset,
 
 def resample(train_dataset: Dataset, 
              data_args: DataArguments, 
-             augment_args: AugmentArguments):
+             augment_args: AugmentArguments) -> Dataset:
     """Resample data to balanced out the data based on the chosen rating (default = cefr_mean)"""
     start = time.time()
     
@@ -305,6 +305,3 @@ def resample(train_dataset: Dataset,
 
     logger.debug(f"Training set (N={len(train_dataset)}): data resampled. {print_time(start)}")
     return train_dataset
-    
-
-
