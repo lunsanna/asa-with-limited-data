@@ -1,9 +1,25 @@
 # ALL hyper-parameters are defined in this config file
 
-# Some of them are taken from Yaroslav's shell script
 asa_args: 
   drop_classes: []
 
+asa_training_args:
+  output_dir: "asa_output_fold_"
+  evaluation_strategy: "epoch"
+  save_strategy: "epoch"
+  learning_rate: 0.00003
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 1
+  per_device_eval_batch_size: 2
+  num_train_epochs: 10
+  warmup_ratio: 0.1
+  load_best_model_at_end: true
+  save_total_limit: 1
+  metric_for_best_model: "f1"
+  push_to_hub: false
+  gradient_checkpointing: true
+
+# Some of them are taken from Yaroslav's shell script
 model_args:
   # The name or path of the pre-trained model to use as a starting point
   # Swedish
@@ -103,7 +119,6 @@ augment_args:
   # true = double the amount of training by adding an augmented copy 
   # false = use only the augmented copy 
   copy: true
-  resample_based_on: "pronunciation_mean"
 
   # relevant for random_transform and resampling
   max_num_of_transforms: 2

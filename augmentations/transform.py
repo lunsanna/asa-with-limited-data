@@ -22,7 +22,6 @@ from typing import Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
-
 def time_masking(data_args: DataArguments,
                  transform_args: TimeMaskingArgs,
                  example: Dict[str, Any]) -> Dict[str, Any]:
@@ -244,6 +243,7 @@ transform_dict = {
 
 transform_names = list(transform_dict.keys())
 transform_names.extend(["random_transforms", "copy_original"]) # Pseudo transforms
+ratings = ["cefr_mean", "pronunciation_mean","fluency_mean", "accuracy_mean","range_mean","task_completion_mean"]
 
 def apply_tranformations(train_dataset: Dataset,
                          data_args: DataArguments,

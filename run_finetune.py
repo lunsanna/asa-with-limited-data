@@ -21,7 +21,7 @@ from transformers import (
 from typing import Literal, Optional, Pattern, Dict, Tuple, Any, Callable, List
 from evaluate import Metric
 
-from augmentations import apply_tranformations, transform_names, AugmentArguments, resample
+from augmentations import apply_tranformations, transform_names, AugmentArguments, resample, ratings
 from helper import prepare_example, prepare_dataset # preprocessing 
 from helper import compute_metrics 
 from helper import DataCollatorCTCWithPadding, CTCTrainer, MetricCallback # classes 
@@ -36,18 +36,19 @@ logger = logging.getLogger(__name__)
 
 def get_df(lang: Literal["fi", "sv"],
            data_args: DataArguments, 
-           resample: bool, 
-           resample_group: str) -> pd.DataFrame:
+           resample: Optional[str]) -> pd.DataFrame:
     """Load csv file based on lang"""
     csv_path: Optional[str] = data_args.csv_fi if lang == "fi" else data_args.csv_sv
 
     usecols = ["recording_path", "transcript_normalized", "split"]
-    if resample: usecols.append(resample_group)
+    if resample: 
+        usecols.append(resample)
+        logger.debug(f"Resampling will be done based on {resample}")
 
     df = pd.read_csv(csv_path, encoding="utf-8", usecols=usecols)
     # rename columns
     df = df.rename(columns={"recording_path":"file_path", "transcript_normalized":"text"})
-    if resample: df = df.rename(columns={resample_group: "rating"})
+    if resample: df = df.rename(columns={resample: "rating"})
 
     return df
 
@@ -199,7 +200,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--lang", type=str, default="sv", help="Model language, either fi or sv.")
     parser.add_argument("--augment", type=str, default=None, help="Augmentation method, ignore if resample is set.")
-    parser.add_argument("--resample", action="store_true", help="Whether to resample data or not.")
+    parser.add_argument("--resample", type=str, default=None, help="Resampling criteria. If set, augment arg will be ignored.")
     parser.add_argument("--test", help="Test run", action="store_true")
     parser.add_argument("--fold", type=int, default=None, help="Fold number, 0-3")
     args = parser.parse_args()
@@ -235,7 +236,7 @@ if __name__ == "__main__":
 
     # 2. Load csv file containing data summary
     # -- columns: file_path, split, normalised transcripts
-    df: pd.DataFrame = get_df(args.lang, data_args, resample, augment_args.resample_based_on)
+    df: pd.DataFrame = get_df(args.lang, data_args, args.resample)
     if args.test:
         df = df[:30]
         training_args.num_train_epochs = 1
@@ -244,7 +245,7 @@ if __name__ == "__main__":
     pretrained_name_or_path: str = model_args.fi_pretrained if args.lang == "fi" else model_args.sv_pretrained
 
     # 4. Run k-fold
-    print(f"********** Runing fold {args.fold} ********** ")
+    print(f"********** Running fold {args.fold} ********** ")
 
     print("LOAD PRE-TRAINED PROCESSOR AND MODEL")
     processor, model = load_processor_and_model(pretrained_name_or_path, model_args)
@@ -262,7 +263,8 @@ if __name__ == "__main__":
     
     # -- apply augmentations
     if args.resample: 
-        print(f"RE-SAMPLING TRAINING DATA BASED ON {augment_args.resample_based_on}")
+        assert args.resample in ratings, f"Expect {ratings}, got {args.resample}"
+        print(f"RE-SAMPLING TRAINING DATA BASED ON {args.resample}")
         train_dataset = resample(train_dataset, data_args, augment_args)
     elif args.augment:
         assert args.augment in transform_names, f"Expect {transform_names}, got {args.augment}"

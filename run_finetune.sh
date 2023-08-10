@@ -13,10 +13,11 @@ module load anaconda
 module load cuda 
 source activate w2v2
 
-srun python -u run_finetune.py \
+srun python -u /scratch/work/lunt1/wav2vec2-finetune/run_finetune.py \
 --lang=fi \
 --fold=$SLURM_ARRAY_TASK_ID \
 # --augment=time_masking \
+# --resample=cefr_mean \
 # -- test
 
 # torchrun --nproc_per_node=1 finetune.py --lang=fi

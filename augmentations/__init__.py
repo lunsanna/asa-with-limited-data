@@ -8,7 +8,8 @@ from .transform import (resample,
                         tempo_perturbation,
                         transform_dict,
                         transform_names, 
-                        random_transforms)
+                        random_transforms, 
+                        ratings)
 from .AugmentArguments import AugmentArguments
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     'transform_names', 
     'random_transforms',
     'AugmentArguments', 
+    'ratings'
 ]
