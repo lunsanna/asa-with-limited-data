@@ -1,18 +1,24 @@
-import torch, torchaudio, evaluate, yaml, glob, argparse
+import torch, torchaudio, evaluate, yaml, glob, argparse, logging, time
 import pandas as pd
+from numpy import argmax
 from functools import partial
 
 from datasets import Dataset
-from transformers import Wav2Vec2Processor, AutoModelForAudioClassification, TrainingArguments, Trainer
-from sklearn.metrics import accuracy_score, recall_score, f1_score
+from transformers import Wav2Vec2Processor, AutoModelForAudioClassification, TrainingArguments, Trainer, EarlyStoppingCallback
 
-from helper import ModelArguments, DataArguments
+from helper import ModelArguments, DataArguments, configure_logger, print_memory_usage, print_time, MetricCallback
 
 # for type annotation 
 from typing import List, Dict
 from transformers import EvalPrediction
 
+logger = logging.getLogger(__name__)
+
 # Helper functions 
+def true_round(x):
+    import decimal
+    return int(decimal.Decimal(str(x)).quantize(decimal.Decimal("1"), rounding=decimal.ROUND_HALF_UP))
+
 def get_df(csv_path, drop_classes: List[int]) -> pd.DataFrame:
     """Process data frame before
     Args:
@@ -26,6 +32,11 @@ def get_df(csv_path, drop_classes: List[int]) -> pd.DataFrame:
     # drop sparse classes
     for c in drop_classes:
         df = df[df.label!=c]
+    if len(drop_classes) > 0: logger.debug(f"Dropped classes {drop_classes}")
+
+    # do rounding if neccessary
+    if df.label.dtype != int:
+        df["label"] = df["label"].apply(true_round)
 
     # shift classes so they start from 0
     df["label"] = df["label"] - df.label.min()
@@ -41,47 +52,62 @@ def load_speech(target_sr: int, example: Dict) -> Dict:
     return example
 
 def extract_features(processor: Wav2Vec2Processor, batch: Dict) -> Dict:
-    return processor(audio=batch["speech"], 
-                     sampling_rate=processor.feature_extractor.sampling_rate)
+    """Used in the .map method to prepare each example in datasets"""
+    batch["input_values"] = processor(
+        audio=batch["speech"], 
+        sampling_rate=processor.feature_extractor.sampling_rate, 
+        return_tensors="pt",
+        padding="longest").input_values[0]
+    return batch
 
-def compute_metrics(pred: EvalPrediction) -> Dict:
+def compute_metrics(pred: EvalPrediction, print_eval: bool = False) -> Dict:
     pred_logits = pred.predictions
-    pred_ids = torch.argmax(pred_logits, axis=-1)
+    pred_ids = argmax(pred_logits, axis=-1)
     
-    print(len(pred.label_ids[pred.label_ids == -100]))
+    precision = precision_metric.compute(predictions=pred_ids, references=pred.label_ids, average="macro")
+    recall = recall_metric.compute(predictions=pred_ids, references=pred.label_ids, average="macro")
+    f1 = f1_metric.compute(predictions=pred_ids, references=pred.label_ids, average="macro")
+    spearman = spearmanr_metric.compute(predictions=pred_ids, references=pred.label_ids)
+
+    precision_weighted = precision_metric.compute(predictions=pred_ids, references=pred.label_ids, average="weighted")
+    recall_weighted = recall_metric.compute(predictions=pred_ids, references=pred.label_ids, average="weighted")
+    f1_weighted = f1_metric.compute(predictions=pred_ids, references=pred.label_ids, average="weighted")
+
+    if print_eval and logger.isEnabledFor(logging.DEBUG):
+        for pred, label in zip(pred_ids, pred.label_ids):
+            logger.debug(f"label: {label}")
+            logger.debug(f"pred: {pred}")
     
-    accuracy = accuracy_metric(predictions=pred_ids, references=pred.label_ids)
-    recall = recall_metric(predictions=pred_ids, references=pred.label_ids)
-    f1 = f1_metric(predictions=pred_ids, references=pred.label_ids)
-    spearman = spearmanr_metric(prediction=pred_ids, reference=pred.label_ids)
-    
-    accuracy_v2 = accuracy_score(pred.label_ids, pred_ids)
-    print(f'evaluate: {accuracy}, sklearn: {accuracy_v2}')
-    
-    return {'accuracy':accuracy, 'recall':recall, 'f1':f1, 'spearman': spearman}
+    return {**precision, **recall, **f1, **spearman, 
+            "precision_weighted": precision_weighted["precision"], 
+            "recall_weighted" : recall_weighted["recall"], 
+            "f1_weighted": f1_weighted["f1"]}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--lang", type=str, default="fi", help="Either fi or sv")
-    parser.add_argument("--partial_model_path", type=str, defalut=None, help="Partial path to trained model")
+    parser.add_argument("--partial_model_path", type=str, default=None, help="Partial path to trained model")
     parser.add_argument("--fold", type=int, default=None, help="Fold number, [0,3]")
+    parser.add_argument("--resume_from", type=str, default=None, help="Checkpoint to resume from")
+    parser.add_argument("--epoch", type=int, default=None, help="Set epoch to value different from config")
+    parser.add_argument("--test", help="Test run", action="store_true")
     args = parser.parse_args()
     assert args.fold in range(4), f"Expected fold [0, 3], got {args.fold}"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Load metrics
-    f1_metric = evaluate.load("f1")
-    accuracy_metric = evaluate.load("accuracy")
-    spearmanr_metric = evaluate.load("spearmanr")
-    recall_metric = evaluate.load("recall")
-
-    # Load config
+    
+    # Prep: Load config, setting params and config logger
     with open("config.yml") as f:
         config = yaml.safe_load(f)
     data_args = DataArguments(**config["data_args"])
     model_args = ModelArguments(**config["model_args"])
     asa_args = config["asa_args"]
+    
+    # Prep: Update training args based on arguments
+    training_args = TrainingArguments(**config["asa_training_args"])
+    training_args.output_dir = f"{training_args.output_dir}{args.fold}"
+    training_args.resume_from_checkpoint = args.resume_from
+    if args.epoch: training_args.num_train_epochs = args.epoch
     
     if args.lang == "fi":
         csv_path = data_args.csv_fi
@@ -90,64 +116,59 @@ if __name__ == "__main__":
         csv_path = data_args.csv_sv
         pretrained_path = model_args.sv_pretrained
 
-    # Load df
+    configure_logger(model_args.verbose_logging)
+    if device != torch.device('cuda'): 
+        logger.warning("Cuda is not available!!")
+
+    # Prep: Load df
     drop_classes = asa_args.get("drop_classes", [])
     df = get_df(csv_path=csv_path, drop_classes=drop_classes)
+    if args.test: df = df[:30]
 
     print(f"******** Training fold {args.fold} ********")
     
-    # Load pretrained processor
+    # 1. Load pretrained processor
     processor = Wav2Vec2Processor.from_pretrained(
         pretrained_path, 
-        cache_dir=model_args.cache_dir).to(device)
+        cache_dir=model_args.cache_dir)
+    logger.debug(f"Processor loaded. {print_memory_usage()}")
 
-    # Load fine-tuned model
-    model_path = glob.glob(f"{args.partial_model_path}{args.fold}/*")[0]
+    # 2. Load fine-tuned model
+    model_path = args.resume_from if args.resume_from else glob.glob(f"{args.partial_model_path}{args.fold}/*")[0]
     model = AutoModelForAudioClassification.from_pretrained(
         model_path, 
         cache_dir=model_args.cache_dir,
-        num_labels=len(df.groupby('label'))).to(device)
+        num_labels=len(df.groupby('label')))
+    logger.debug(f"Model loaded. {print_memory_usage()}")
+    print(model)
 
-    # Create and processes train and eval datasets
+    # 3. Create and processes train and eval datasets
     df_train = df[df.split != args.fold].drop("split", axis=1)
     df_eval = df[df.split == args.fold].drop("split", axis=1)
+    train_dataset = Dataset.from_pandas(df_train)
+    eval_dataset = Dataset.from_pandas(df_eval)
+    train_dataset.set_format("pt")
+    eval_dataset.set_format("pt")
 
     load_speech_partial = partial(load_speech, data_args.target_feature_extractor_sampling_rate)
     extract_features_partial = partial(extract_features, processor)
 
-    train_dataset = Dataset.from_pandas(df_train)
     train_dataset = train_dataset.map(load_speech_partial, remove_columns=["file_path"])
-    train_dataset = train_dataset.map(extract_features_partial, batched=True, batch_size=1)
-
-    eval_dataset = Dataset.from_pandas(df_eval)
     eval_dataset = eval_dataset.map(load_speech_partial, remove_columns=["file_path"])
+    logger.debug(f"Speech loaded. N_train={len(train_dataset)}, N_eval={len(eval_dataset)}. {print_memory_usage()}")
+
+    start = time.time()
+    train_dataset = train_dataset.map(extract_features_partial, batched=True, batch_size=1)
     eval_dataset = eval_dataset.map(extract_features_partial, batched=True, batch_size=1)
+    logger.debug(f"Feature extracted. {print_time(start)} {print_memory_usage()}")
 
-    # Define metrics 
-    f1_metric = evaluate.load('f1')
-    accuracy_metric = evaluate.load('accuracy')
-    spearmanr_metric = evaluate.load('spearmanr')
-    recall_metric = evaluate.load('recall')
+    # 4. Define metrics 
+    precision_metric = evaluate.load("precision")
+    recall_metric = evaluate.load("recall")
+    f1_metric = evaluate.load("f1")
+    spearmanr_metric = evaluate.load("spearmanr")
 
-
-    # Train
-    training_args = TrainingArguments(
-        output_dir=f'asa_output_fold_{args.fold}',
-        evaluation_strategy='epoch',
-        save_strategy='epoch',
-        learning_rate=3e-5,
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=1,
-        per_device_eval_batch_size=2,
-        num_train_epochs=10,
-        warmup_ratio=0.1,
-        load_best_model_at_end=False,
-        save_total_limit=1,
-        metric_for_best_model='f1',
-        push_to_hub=False,
-        gradient_checkpointing=True
-        )
-
+    # 5. Train
     if model_args.freeze_feature_encoder:
         model.freeze_feature_encoder()
 
@@ -157,7 +178,14 @@ if __name__ == "__main__":
         train_dataset=train_dataset, 
         eval_dataset=eval_dataset,
         tokenizer=processor.feature_extractor,
-        compute_metrics=compute_metrics
+        compute_metrics=compute_metrics, 
+        callbacks=[MetricCallback]
     )
 
+    logger.debug(f"Training starts now. {print_memory_usage()}")
+    start = time.time()
     trainer.train()
+    logger.info(f"Training completed. {print_time(start)}")
+
+    predictions = trainer.predict(eval_dataset)
+    compute_metrics(predictions, print_eval=True)
