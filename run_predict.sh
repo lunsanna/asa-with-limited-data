@@ -12,6 +12,6 @@ module load anaconda
 module load cuda 
 source activate w2v2
 
-srun python -u ../../run_predict.py \
+srun python -u /scratch/work/lunt1/wav2vec2-finetune/run_predict.py \
 --fold=$SLURM_ARRAY_TASK_ID \
 --partial_model_path=output_fold_
