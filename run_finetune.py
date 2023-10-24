@@ -30,7 +30,7 @@ from helper import DataArguments, ModelArguments
 
 logger = logging.getLogger(__name__)
 
-################
+# ###############
 # functions related to data handling
 
 
@@ -107,7 +107,7 @@ def extract_features(name: Literal["train", "val"],
 
     return dataset
 
-################
+# ###############
 # functions related to processor and model
 
 def load_processor_and_model(path: str,
@@ -139,7 +139,7 @@ def load_processor_and_model(path: str,
 
     return processor, model
 
-################
+# ###############
 # function related to training
 
 
@@ -193,7 +193,7 @@ def run_train(fold: int,
 
     predictions = trainer.predict(val_dataset)
     compute_metrics_partical(predictions, print_examples=True)
-    
+
 
 if __name__ == "__main__":
 

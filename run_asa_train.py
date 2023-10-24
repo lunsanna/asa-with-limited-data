@@ -5,6 +5,7 @@ from functools import partial
 
 from datasets import Dataset
 from transformers import Wav2Vec2Processor, AutoModelForAudioClassification, TrainingArguments, Trainer, EarlyStoppingCallback
+from augmentations import apply_tranformations, transform_names, AugmentArguments, resample, ratings
 
 from helper import ModelArguments, DataArguments, configure_logger, print_memory_usage, print_time, MetricCallback
 
@@ -87,11 +88,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--lang", type=str, default="fi", help="Either fi or sv")
     parser.add_argument("--partial_model_path", type=str, default=None, help="Partial path to trained model")
+    parser.add_argument("--resample", type=str, default=None, help="Resampling criteria. If set, augment arg will be ignored.")
+    parser.add_argument("--augment", type=str, default=None, help="Augmentation method, ignored if resample is set.")
     parser.add_argument("--fold", type=int, default=None, help="Fold number, [0,3]")
     parser.add_argument("--resume_from", type=str, default=None, help="Checkpoint to resume from")
     parser.add_argument("--epoch", type=int, default=None, help="Set epoch to value different from config")
     parser.add_argument("--test", help="Test run", action="store_true")
+    
     args = parser.parse_args()
+    assert args.lang in ["fi", "sv"], f"Expected fi or sv, got {args.lang}"
     assert args.fold in range(4), f"Expected fold [0, 3], got {args.fold}"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -101,6 +106,7 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
     data_args = DataArguments(**config["data_args"])
     model_args = ModelArguments(**config["model_args"])
+    augment_args = AugmentArguments(**config["augment_args"])
     asa_args = config["asa_args"]
     
     # Prep: Update training args based on arguments
@@ -150,17 +156,26 @@ if __name__ == "__main__":
     train_dataset.set_format("pt")
     eval_dataset.set_format("pt")
 
+    # -- load speech 
     load_speech_partial = partial(load_speech, data_args.target_feature_extractor_sampling_rate)
-    extract_features_partial = partial(extract_features, processor)
-
     train_dataset = train_dataset.map(load_speech_partial, remove_columns=["file_path"])
     eval_dataset = eval_dataset.map(load_speech_partial, remove_columns=["file_path"])
     logger.debug(f"Speech loaded. N_train={len(train_dataset)}, N_eval={len(eval_dataset)}. {print_memory_usage()}")
 
+    # -- extract features 
     start = time.time()
+    extract_features_partial = partial(extract_features, processor)
     train_dataset = train_dataset.map(extract_features_partial, batched=True, batch_size=1)
     eval_dataset = eval_dataset.map(extract_features_partial, batched=True, batch_size=1)
     logger.debug(f"Feature extracted. {print_time(start)} {print_memory_usage()}")
+
+    # -- augment data
+    if args.resample:
+        assert args.resample in ratings, f"Expected {ratings}, got {args.resample}"
+        train_dataset = resample(train_dataset, data_args, augment_args, criterion="label")
+    elif args.augment:
+        assert args.augment in transform_names, f"Check augment name"
+        train_dataset = apply_tranformations(train_dataset, data_args, augment_args, args.augment)
 
     # 4. Define metrics 
     precision_metric = evaluate.load("precision")

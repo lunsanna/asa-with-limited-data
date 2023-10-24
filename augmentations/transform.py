@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from WavAugment import augment
 from datasets import Dataset, concatenate_datasets
 from functools import partial
@@ -210,7 +211,7 @@ def tempo_perturbation(data_args: DataArguments,
     example["speech"] = speech.squeeze()
     return example
 
-def copy_original(example: Dict[str, Any]) -> Dict[str, Any]:
+def duplicate(example: Dict[str, Any]) -> Dict[str, Any]:
     """Apply no transformations"""
     return example
 
@@ -230,7 +231,7 @@ def random_transforms(data_args: DataArguments,
         example = transform(data_args, getattr(augment_args, transform_name), example)
 
     return example
-    
+
 
 transform_dict = {
     "time_masking": time_masking,
@@ -242,7 +243,7 @@ transform_dict = {
 }
 
 transform_names = list(transform_dict.keys())
-transform_names.extend(["random_transforms", "copy_original"]) # Pseudo transforms
+transform_names.extend(["random_transforms", "duplicate"]) # Pseudo transforms
 ratings = ["cefr_mean", "pronunciation_mean","fluency_mean", "accuracy_mean","range_mean","task_completion_mean"]
 
 def apply_tranformations(train_dataset: Dataset,
@@ -253,8 +254,8 @@ def apply_tranformations(train_dataset: Dataset,
     if augment_name == "random_transforms":
         transform = random_transforms
         transform_partial = partial(transform, data_args, augment_args)
-    elif augment_name == "copy_original":
-        transform_partial = copy_original
+    elif augment_name == "duplicate":
+        transform_partial = duplicate
     else:
         transform = transform_dict[augment_name]
         transform_args = getattr(augment_args, augment_name)
@@ -272,12 +273,13 @@ def apply_tranformations(train_dataset: Dataset,
 
 def resample(train_dataset: Dataset, 
              data_args: DataArguments, 
-             augment_args: AugmentArguments) -> Dataset:
+             augment_args: AugmentArguments, 
+             criterion: str = "rating") -> Dataset:
     """Resample data to balanced out the data based on the chosen rating (default = cefr_mean)"""
     start = time.time()
     
     train_copy = copy.deepcopy(train_dataset) # always create a copy 
-    ratings = train_copy["rating"].tolist()
+    ratings = train_copy[criterion].tolist()
 
     # calculate samlping rate
     group_counts = Counter(ratings)
@@ -300,7 +302,7 @@ def resample(train_dataset: Dataset,
     # concat 
     train_dataset = concatenate_datasets([train_dataset, train_copy]).shuffle()
     rating_avg = sum(group_counts.keys())/len(group_counts)
-    actual_avg = sum(train_dataset["rating"])/len(train_dataset)
+    actual_avg = sum(train_dataset[criterion])/len(train_dataset)
     assert isclose(rating_avg, actual_avg,  rel_tol=0.1), f"Expect {actual_avg}, got {rating_avg}"
 
     logger.debug(f"Training set (N={len(train_dataset)}): data resampled. {print_time(start)}")
