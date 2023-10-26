@@ -252,6 +252,7 @@ def apply_tranformations(train_dataset: Dataset,
                          augment_name: str) -> Dataset:
     start = time.time()
     if augment_name == "random_transforms":
+        logger.debug(f"Max transforms: {augment_args.max_num_of_transforms}")
         transform = random_transforms
         transform_partial = partial(transform, data_args, augment_args)
     elif augment_name == "duplicate":
