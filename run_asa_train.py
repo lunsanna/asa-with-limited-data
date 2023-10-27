@@ -33,10 +33,11 @@ def get_df(csv_path, drop_classes: List[int]) -> pd.DataFrame:
     # drop sparse classes
     for c in drop_classes:
         df = df[df.label!=c]
-    if len(drop_classes) > 0: logger.debug(f"Dropped classes {drop_classes}")
+    if len(drop_classes) > 0: logger.warning(f"Dropped classes {drop_classes}")
 
     # do rounding if neccessary
     if df.label.dtype != int:
+        logger.warning("Rounding required. Ensure that the correct dataset was loaded.")
         df["label"] = df["label"].apply(true_round)
 
     # shift classes so they start from 0
