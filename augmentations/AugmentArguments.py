@@ -38,6 +38,11 @@ class TempoPerturbArgs(object):
         self.perturbation_factors = perturbation_factors
         assert isinstance(self.perturbation_factors, list) and len(self.perturbation_factors) > 0
 
+class ResampleArgs(object):
+    def __init__(self, do_augment: bool = True, max_num_of_transforms: int = 2) -> None:
+        self.do_augment = do_augment
+        self.max_num_of_transforms = max_num_of_transforms
+
 class AugmentArguments(object):
     def __init__(self, 
                  copy: bool = True,
@@ -47,7 +52,8 @@ class AugmentArguments(object):
                  pitch_shift: Dict = None, 
                  reverberation: Dict = None, 
                  additive_noise: Dict = None, 
-                 tempo_perturbation: Dict = None):
+                 tempo_perturbation: Dict = None, 
+                 resample: Dict = None):
         
         self.copy = copy 
         self.max_num_of_transforms = max_num_of_transforms
@@ -58,6 +64,7 @@ class AugmentArguments(object):
         self.reverberation = ReverbArgs(**reverberation) if reverberation else ReverbArgs()
         self.additive_noise = AdditiveNoiseArgs(**additive_noise) if additive_noise else AdditiveNoiseArgs()
         self.tempo_perturbation = TempoPerturbArgs(**tempo_perturbation) if tempo_perturbation else TempoPerturbArgs()
+        self.resample = ResampleArgs(**resample) if resample else ResampleArgs()
 
         
 

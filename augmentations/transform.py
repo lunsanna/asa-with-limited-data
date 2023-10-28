@@ -251,6 +251,7 @@ def apply_tranformations(train_dataset: Dataset,
                          augment_args: AugmentArguments,
                          augment_name: str) -> Dataset:
     start = time.time()
+    # Pseudo transforms, they don't perform the transforms directly
     if augment_name == "random_transforms":
         logger.debug(f"Max transforms: {augment_args.max_num_of_transforms}")
         transform = random_transforms
@@ -258,6 +259,7 @@ def apply_tranformations(train_dataset: Dataset,
     elif augment_name == "duplicate":
         transform_partial = duplicate
     else:
+        #  Actualy transforms
         transform = transform_dict[augment_name]
         transform_args = getattr(augment_args, augment_name)
         transform_partial = partial(transform, data_args, transform_args)
@@ -297,11 +299,19 @@ def resample(train_dataset: Dataset,
     train_copy = train_copy.select(n) 
 
     # augment only the copied dataset, using random_transforms
-    augment_args.copy = False
-    train_copy = apply_tranformations(train_copy, data_args, augment_args, "random_transforms")
+    if augment_args.resample.do_augment:
+        augment_args.copy = False
+        augment_args.max_num_of_transforms = augment_args.resample.max_num_of_transforms
+        logger.debug("Apply augmentation to oversampled instances")
+        
+        train_copy = apply_tranformations(train_copy, data_args, augment_args, "random_transforms")
+    else:
+        logger.debug("Do NOT apply augmentation to oversampled instances")
 
     # concat 
     train_dataset = concatenate_datasets([train_dataset, train_copy]).shuffle()
+
+    # sanity check - class distribution of the final dataset is almost uniform
     rating_avg = sum(group_counts.keys())/len(group_counts)
     actual_avg = sum(train_dataset[criterion])/len(train_dataset)
     assert isclose(rating_avg, actual_avg,  rel_tol=0.1), f"Expect {actual_avg}, got {rating_avg}"
