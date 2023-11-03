@@ -21,10 +21,10 @@ from transformers import (
 from typing import Literal, Optional, Pattern, Dict, Tuple, Any, Callable, List
 from evaluate import Metric
 
-from augmentations import apply_tranformations, transform_names, AugmentArguments, resample, ratings
-from helper import prepare_example, prepare_dataset # preprocessing 
-from helper import compute_metrics 
-from helper import DataCollatorCTCWithPadding, CTCTrainer, MetricCallback # classes 
+from augmentations import apply_tranformations, transform_names, AugmentArguments, resample, ratings, CCLArguments
+from helper import prepare_example, prepare_dataset  # preprocessing
+from helper import compute_metrics
+from helper import DataCollatorCTCWithPadding, CTCTrainer, MetricCallback  # classes
 from helper import configure_logger, print_time, print_memory_usage
 from helper import DataArguments, ModelArguments
 
@@ -35,80 +35,91 @@ logger = logging.getLogger(__name__)
 
 
 def get_df(lang: Literal["fi", "sv"],
-           data_args: DataArguments, 
+           data_args: DataArguments,
            resample: Optional[str]) -> pd.DataFrame:
     """Load csv file based on lang"""
     csv_path: Optional[str] = data_args.csv_fi if lang == "fi" else data_args.csv_sv
 
-    usecols = ["recording_path", "transcript_normalized", "split"]
-    if resample: 
+    usecols = ["recording_path", "transcript_normalized", "split", "cefr_mean"]
+    if resample:
         usecols.append(resample)
         logger.debug(f"Resampling will be done based on {resample}")
 
     df = pd.read_csv(csv_path, encoding="utf-8", usecols=usecols)
     # rename columns
-    df = df.rename(columns={"recording_path":"file_path", "transcript_normalized":"text"})
-    if resample: df = df.rename(columns={resample: "rating"})
+    df = df.rename(columns={"recording_path": "file_path",
+                   "transcript_normalized": "text"})
+    if resample:
+        df["rating"] = df[resample]
+        # df = df.rename(columns={resample: "rating"})
 
     return df
+
 
 def load_speech(name: Literal["train", "val"],
                 dataset: Dataset,
                 processor: Wav2Vec2Processor,
-                data_args: DataArguments, 
-                remove_columns: List[str]=[]) -> Dataset:
+                data_args: DataArguments,
+                remove_columns: List[str] = []) -> Dataset:
     """Load speech data and pre-process text with prepare_example function
     New columns after this step: speech, sampling_rate, duration_seconds
     """
     target_sr: int = data_args.target_feature_extractor_sampling_rate
 
     # define data regex text cleaner to process text
-    vocab_chars: str = "".join(t for t in processor.tokenizer.get_vocab().keys() if len(t) == 1)
-    text_cleaner_re: Pattern[str] = re.compile(f"[^\s{re.escape(vocab_chars)}]", flags=re.IGNORECASE)
+    vocab_chars: str = "".join(
+        t for t in processor.tokenizer.get_vocab().keys() if len(t) == 1)
+    text_cleaner_re: Pattern[str] = re.compile(
+        f"[^\s{re.escape(vocab_chars)}]", flags=re.IGNORECASE)
 
     # Pass the first two arguments to the function
-    prepare_example_partial = partial(prepare_example, target_sr, text_cleaner_re)
+    prepare_example_partial = partial(
+        prepare_example, target_sr, text_cleaner_re)
 
-    # Apply the prepare example function too all examples 
+    # Apply the prepare example function too all examples
     start = time.time()
     dataset = dataset.map(
         prepare_example_partial,
         remove_columns=remove_columns)
-    logger.debug(f"{name} (N={len(dataset)}): speech successfully loaded. {print_time(start)}")
+    logger.debug(
+        f"{name} (N={len(dataset)}): speech successfully loaded. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
 
     return dataset
 
-def extract_features(name: Literal["train", "val"], 
-                     dataset: Dataset, 
-                     processor: Wav2Vec2Processor, 
-                     data_args: DataArguments, 
+
+def extract_features(name: Literal["train", "val"],
+                     dataset: Dataset,
+                     processor: Wav2Vec2Processor,
+                     data_args: DataArguments,
                      training_args: TrainingArguments) -> Dataset:
     """Process data with the prepare_dataset function
     New columns after this step: input_values, labels
     """
-    
+
     target_sr: int = data_args.target_feature_extractor_sampling_rate
 
     # Pass the first two arguments to the function
     prepare_dataset_partial = partial(prepare_dataset, processor, target_sr)
 
-    # Training set 
+    # Training set
     start = time.time()
     num_proc = 6 if cpu_count() >= 6 else cpu_count()
     dataset = dataset.map(
         prepare_dataset_partial,
         num_proc=num_proc,
         batched=True,
-        batch_size=training_args.per_device_train_batch_size if name=="train" else training_args.per_device_eval_batch_size
-        )
-    logger.debug(f"{name} (N={len(dataset)}): features and labels sucessfully extracted. {print_time(start)}")
+        batch_size=training_args.per_device_train_batch_size if name == "train" else training_args.per_device_eval_batch_size
+    )
+    logger.debug(
+        f"{name} (N={len(dataset)}): features and labels sucessfully extracted. {print_time(start)}")
     logger.debug(f"{print_memory_usage()}")
 
     return dataset
 
 # ###############
 # functions related to processor and model
+
 
 def load_processor_and_model(path: str,
                              model_args: ModelArguments
@@ -151,7 +162,8 @@ def run_train(fold: int,
               training_args: TrainingArguments) -> None:
     """Initialise trainer and  run training"""
 
-    data_collator = DataCollatorCTCWithPadding(processor=processor, padding=True)
+    data_collator = DataCollatorCTCWithPadding(
+        processor=processor, padding=True)
 
     # Set up compute metric function
     wer_metric: Metric = evaluate.load("wer")
@@ -161,7 +173,8 @@ def run_train(fold: int,
 
     # Update output dir based on fold
     output_dir = training_args.output_dir
-    training_args.output_dir = f"{output_dir[:-1]}{fold}" if output_dir[-1].isnumeric() else f"{output_dir}_fold_{fold}"
+    training_args.output_dir = f"{output_dir[:-1]}{fold}" if output_dir[-1].isnumeric(
+    ) else f"{output_dir}_fold_{fold}"
 
     # Set up trainer
     trainer = CTCTrainer(
@@ -185,7 +198,79 @@ def run_train(fold: int,
     logger.debug(f"Training starts now. {print_memory_usage()}")
     start = time.time()
     trainer.train()
-    logger.info(f"Trained {training_args.num_train_epochs} epochs. {print_time(start)}.")
+    logger.info(
+        f"Trained {training_args.num_train_epochs} epochs. {print_time(start)}.")
+
+    # Save the last checkpoint
+    if training_args.load_best_model_at_end:
+        print(f"Best model save at {trainer.state.best_model_checkpoint}")
+
+    predictions = trainer.predict(val_dataset)
+    compute_metrics_partical(predictions, print_examples=True)
+
+
+def run_ccl_train(fold: int,
+                  processor: Wav2Vec2Processor,
+                  model: Wav2Vec2ForCTC,
+                  train_dataset: Dataset,
+                  val_dataset: Dataset,
+                  training_args: TrainingArguments,
+                  ccl_args: CCLArguments) -> None:
+    """Initialise trainer and  run training"""
+
+    data_collator = DataCollatorCTCWithPadding(
+        processor=processor, padding=True)
+
+    # Set up compute metric function
+    wer_metric: Metric = evaluate.load("wer")
+    cer_metric: Metric = evaluate.load("cer")
+    compute_metrics_partical: Callable[[EvalPrediction], Dict] = partial(
+        compute_metrics, processor, wer_metric, cer_metric)
+
+    # Update output dir based on fold
+    output_dir = training_args.output_dir
+    training_args.output_dir = f"{output_dir[:-1]}{fold}" if output_dir[-1].isnumeric(
+    ) else f"{output_dir}_fold_{fold}"
+
+    # defined accending difficulty level based on WER of each label class using the base model
+    logger.debug(f"Class difficulty order: {ccl_args.difficulty_order}")
+    logger.debug(f"n_epochs for each CCL phase: {ccl_args.n_epochs}")
+
+    train_datasets = [train_dataset.filter(
+        lambda example:example["cefr_mean"] in scores
+    ) for scores in ccl_args.difficulty_order]
+    assert training_args.num_train_epochs == sum(ccl_args.n_epochs)
+
+    for i, (n_epoch, current_train_dataset) in enumerate(zip(ccl_args.n_epochs, train_datasets)):
+        print(f"Classes: {ccl_args.difficulty_order[i]}")
+        #  update training arg
+        training_args.num_train_epochs = n_epoch
+
+        # Set up trainer
+        trainer = CTCTrainer(
+            model=model if i == 0 else trainer.model,
+            data_collator=data_collator,
+            args=training_args,
+            compute_metrics=compute_metrics_partical,
+            train_dataset=current_train_dataset,
+            eval_dataset=val_dataset,
+            tokenizer=processor.feature_extractor,
+            callbacks=[MetricCallback]
+        )
+
+        # Print metrics before training
+        if i == 0:
+            metrics_before_train = compute_metrics_partical(
+                trainer.predict(val_dataset), print_examples=False)
+            print({"eval_wer": metrics_before_train["wer"],
+                   "eval_cer": metrics_before_train["cer"]})
+
+        # Train
+        logger.debug(f"Training {i} starts now. {print_memory_usage()}")
+        start = time.time()
+        trainer.train()
+        logger.info(
+            f"Trained {training_args.num_train_epochs} epochs. {print_time(start)}.")
 
     # Save the last checkpoint
     if training_args.load_best_model_at_end:
@@ -198,17 +283,19 @@ def run_train(fold: int,
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lang", type=str, default="sv", help="Model language, either fi or sv.")
-    parser.add_argument("--augment", type=str, default=None, help="Augmentation method, ignore if resample is set.")
-    parser.add_argument("--resample", type=str, default=None, help="Resampling criteria. If set, augment arg will be ignored.")
+    parser.add_argument("--lang", type=str, default="sv",help="Model language, either fi or sv.")
+    parser.add_argument("--augment", type=str, default=None,help="Augmentation method, ignore if resample is set.")
+    parser.add_argument("--resample", type=str, default=None,help="Resampling criteria. If set, augment arg will be ignored.")
+    parser.add_argument("--ccl_training", help="Run class-wise curriculum learning or not", action="store_true")
     parser.add_argument("--test", help="Test run", action="store_true")
-    parser.add_argument("--fold", type=int, default=None, help="Fold number, 0-3")
+    parser.add_argument("--fold", type=int, default=None,
+                        help="Fold number, 0-3")
     args = parser.parse_args()
 
     assert args.lang in ["fi", "sv"], f"Lang must be either fi or sv, got {args.lang}."
     assert args.fold in range(4), f"Expect fold 0-3, got {args.fold}"
 
-    # 1. Configs and arguments 
+    # 1. Configs and arguments
     device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     with open('config.yml', 'r') as file:
@@ -248,32 +335,46 @@ if __name__ == "__main__":
     print(f"********** Running fold {args.fold} ********** ")
 
     print("LOAD PRE-TRAINED PROCESSOR AND MODEL")
-    processor, model = load_processor_and_model(pretrained_name_or_path, model_args)
+    processor, model = load_processor_and_model(
+        pretrained_name_or_path, model_args)
 
     print("LOAD DATA")
     # -- split dataset into train and validation
     train_dataset: Dataset = Dataset.from_pandas(df[df.split != args.fold])
+    print(train_dataset)
     val_dataset: Dataset = Dataset.from_pandas(df[df.split == args.fold])
     train_dataset.set_format("pt")
     val_dataset.set_format("pt")
 
-    # -- load speech and other info from path 
-    train_dataset = load_speech("train", train_dataset, processor, data_args, remove_columns=["file_path", "split"])
-    val_dataset = load_speech("val", val_dataset, processor, data_args, remove_columns=["file_path", "split"])
-    
+    # -- load speech and other info from path
+    train_dataset = load_speech(
+        "train", train_dataset, processor, data_args, remove_columns=["file_path", "split"])
+    val_dataset = load_speech(
+        "val", val_dataset, processor, data_args, remove_columns=["file_path", "split"])
+
     # -- apply augmentations
-    if args.resample: 
+    if args.resample:
         assert args.resample in ratings, f"Expect {ratings}, got {args.resample}"
         print(f"RE-SAMPLING TRAINING DATA BASED ON {args.resample}")
         train_dataset = resample(train_dataset, data_args, augment_args)
     elif args.augment:
         assert args.augment in transform_names, f"Expect {transform_names}, got {args.augment}"
         print(f"AUGMENT TRAINING DATA, METHOD: {args.augment}")
-        train_dataset = apply_tranformations(train_dataset, data_args, augment_args, args.augment)
-    
+        train_dataset = apply_tranformations(
+            train_dataset, data_args, augment_args, args.augment)
+
     print("EXTRACT FEATURES")
-    train_dataset = extract_features("train", train_dataset, processor, data_args, training_args)
-    val_dataset = extract_features("val", val_dataset, processor, data_args, training_args)
-    
+    train_dataset = extract_features(
+        "train", train_dataset, processor, data_args, training_args)
+    val_dataset = extract_features(
+        "val", val_dataset, processor, data_args, training_args)
+
     print("TRAIN")
-    run_train(args.fold, processor, model, train_dataset, val_dataset, training_args)
+    if args.ccl_training:
+        print("RUNNING CCL")
+        ccl_args = CCLArguments(**train_config["ccl_args"])
+        run_ccl_train(args.fold, processor, model,
+                      train_dataset, val_dataset, training_args, ccl_args)
+    else:
+        run_train(args.fold, processor, model,
+                  train_dataset, val_dataset, training_args)
