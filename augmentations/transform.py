@@ -287,7 +287,7 @@ def resample(train_dataset: Dataset,
     # calculate samlping rate
     group_counts = Counter(ratings)
     n_group = len(group_counts)
-    n_copy = 2 # double the dataset
+    n_copy = 2.8 # double the dataset
     avg_n_samples_per_gp = len(train_copy)*n_copy/n_group
     n_samples = [(group, avg_n_samples_per_gp - count) for group, count in group_counts.items()]
     assert all([n > 0 for _, n in n_samples]), f"This calculation does not work. Might have to re-design."

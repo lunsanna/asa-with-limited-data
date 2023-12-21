@@ -10,7 +10,7 @@ import argparse
 import pandas as pd
 import torch
 import evaluate
-from datasets import Dataset
+from datasets import Dataset, concatenate_datasets
 from transformers import (
     Wav2Vec2ForCTC,
     Wav2Vec2Processor,
@@ -36,9 +36,13 @@ logger = logging.getLogger(__name__)
 
 def get_df(lang: Literal["fi", "sv"],
            data_args: DataArguments,
-           resample: Optional[str]) -> pd.DataFrame:
+           resample: Optional[str],
+           synth: bool = False) -> pd.DataFrame:
     """Load csv file based on lang"""
-    csv_path: Optional[str] = data_args.csv_fi if lang == "fi" else data_args.csv_sv
+    if synth:
+        csv_path: str = data_args.csv_fi_synth
+    else:
+        csv_path: str = data_args.csv_fi if lang == "fi" else data_args.csv_sv
 
     usecols = ["recording_path", "transcript_normalized", "split", "cefr_mean"]
     if resample:
@@ -209,13 +213,51 @@ def run_train(fold: int,
     compute_metrics_partical(predictions, print_examples=True)
 
 
+def uniform_mixing(datasets: List[Dataset], swap_proportion: float, num_of_unique_classes: int) -> List[Dataset]:
+    """Swap part of the first dataset with the other datasets
+
+    Args:
+        datasets (List[Dataset]): Original list of datasets
+
+    Returns:
+        List[Dataset]: List of datasets after uniform mixing
+    """
+    assert len(datasets) == 3
+    assert swap_proportion > 0 and swap_proportion < 1
+
+    easy_set, medium_set, hard_set = datasets
+    assert len(hard_set.unique("cefr_mean")) != num_of_unique_classes, f"Do not combine the classes of different difficulty levels."
+    print("Perform Uniform Mixing")
+    # split the easy set 80% - 20%
+    easy_set_split = easy_set.train_test_split(test_size=swap_proportion, seed=201123)
+
+    # further split the 20% easy set into 50% - 50%
+    easy_set_replace = easy_set_split["test"].train_test_split(test_size=0.5, seed=201123)
+
+    # split the medium and hard set into 90% - 10%
+    medium_set_split = medium_set.train_test_split(test_size=swap_proportion/2, seed=201123)
+    hard_set_split = hard_set.train_test_split(test_size=swap_proportion/2, seed=201123)
+
+    # final sets 
+    easy_set = concatenate_datasets([easy_set_split["train"], medium_set_split["test"], hard_set_split["test"]]).shuffle(seed=201123)
+    medium_set = concatenate_datasets([medium_set_split["train"], easy_set_replace["train"]]).shuffle(seed=201123)
+    hard_set = concatenate_datasets([hard_set_split["train"], easy_set_replace["test"]]).shuffle(seed=201123)
+
+    return [
+        easy_set, 
+        concatenate_datasets([easy_set, medium_set]).shuffle(seed=201123),
+        concatenate_datasets([easy_set, medium_set, hard_set]).shuffle(seed=201123)
+    ]
+
+
 def run_ccl_train(fold: int,
                   processor: Wav2Vec2Processor,
                   model: Wav2Vec2ForCTC,
                   train_dataset: Dataset,
                   val_dataset: Dataset,
                   training_args: TrainingArguments,
-                  ccl_args: CCLArguments) -> None:
+                  ccl_args: CCLArguments, 
+                  um: bool=False) -> None:
     """Initialise trainer and  run training"""
 
     data_collator = DataCollatorCTCWithPadding(
@@ -235,14 +277,114 @@ def run_ccl_train(fold: int,
     # defined accending difficulty level based on WER of each label class using the base model
     logger.debug(f"Class difficulty order: {ccl_args.difficulty_order}")
     logger.debug(f"n_epochs for each CCL phase: {ccl_args.n_epochs}")
+    assert training_args.num_train_epochs == sum(ccl_args.n_epochs)
+    # assert all([score in ccl_args.difficulty_order[-1] for score in train_dataset.unique("cefr_mean")])
 
     train_datasets = [train_dataset.filter(
-        lambda example:example["cefr_mean"] in scores
-    ) for scores in ccl_args.difficulty_order]
-    assert training_args.num_train_epochs == sum(ccl_args.n_epochs)
+        lambda example: example["cefr_mean"] in scores) for scores in ccl_args.difficulty_order]
+    
+    if um:
+        train_datasets = uniform_mixing(train_datasets, 0.2, len(train_dataset.unique("cefr_mean")))
 
     for i, (n_epoch, current_train_dataset) in enumerate(zip(ccl_args.n_epochs, train_datasets)):
-        print(f"Classes: {ccl_args.difficulty_order[i]}")
+        print(f"Classes: {ccl_args.difficulty_order[i]}, N={len(current_train_dataset)}")
+        #  update training arg
+        training_args.num_train_epochs = n_epoch
+
+        # Set up trainer
+        trainer = CTCTrainer(
+            model=model if i == 0 else trainer.model,
+            data_collator=data_collator,
+            args=training_args,
+            compute_metrics=compute_metrics_partical,
+            train_dataset=current_train_dataset,
+            eval_dataset=val_dataset,
+            tokenizer=processor.feature_extractor,
+            callbacks=[MetricCallback]
+        )
+
+        # Print metrics before training
+        if i == 0:
+            metrics_before_train = compute_metrics_partical(
+                trainer.predict(val_dataset), print_examples=False)
+            print({"eval_wer": metrics_before_train["wer"],
+                   "eval_cer": metrics_before_train["cer"]})
+
+        # Train
+        logger.debug(f"Training {i} starts now. {print_memory_usage()}")
+        start = time.time()
+        trainer.train()
+        logger.info(
+            f"Trained {training_args.num_train_epochs} epochs. {print_time(start)}.")
+
+    # Save the last checkpoint
+    if training_args.load_best_model_at_end:
+        print(f"Best model save at {trainer.state.best_model_checkpoint}")
+
+    predictions = trainer.predict(val_dataset)
+    compute_metrics_partical(predictions, print_examples=True)
+
+
+def uniform_mixing_tts(datasets: List[Dataset], swap_proportion: float) -> List[Dataset]:
+    """Swap part of the two datasets
+
+    Args:
+        datasets (List[Dataset]): Original list of datasets
+
+    Returns:
+        List[Dataset]: List of datasets after uniform mixing
+    """
+    assert len(datasets) == 2
+    assert swap_proportion > 0 and swap_proportion < 1
+    print("Perform uniform mixing")
+    original_data, synthesised_data = datasets
+    original_data_split = original_data.train_test_split(test_size=swap_proportion, seed=201123)
+    synthesised_data_split = synthesised_data.train_test_split(test_size=swap_proportion, seed=201123)
+    
+    easy_set = concatenate_datasets([original_data_split["train"], synthesised_data_split["test"]]).shuffle(seed=201123)
+    diffisult_set = concatenate_datasets([original_data_split["test"], synthesised_data_split["train"]]).shuffle(seed=201123)
+
+    return [
+         easy_set, 
+        concatenate_datasets([easy_set, diffisult_set]).shuffle(seed=201123)
+    ]
+
+
+
+def run_cl_with_synthesised_data(fold: int,
+                                 processor: Wav2Vec2Processor,
+                                 model: Wav2Vec2ForCTC,
+                                 train_dataset: Dataset,
+                                 synth_train_dataset: Dataset,
+                                 val_dataset: Dataset,
+                                 training_args: TrainingArguments, 
+                                 um: bool=False) -> None:
+    """Initialise trainer and  run training"""
+
+    data_collator = DataCollatorCTCWithPadding(
+        processor=processor, padding=True)
+
+    # Set up compute metric function
+    wer_metric: Metric = evaluate.load("wer")
+    cer_metric: Metric = evaluate.load("cer")
+    compute_metrics_partical: Callable[[EvalPrediction], Dict] = partial(
+        compute_metrics, processor, wer_metric, cer_metric)
+
+    # Update output dir based on fold
+    output_dir = training_args.output_dir
+    training_args.output_dir = f"{output_dir[:-1]}{fold}" if output_dir[-1].isnumeric(
+    ) else f"{output_dir}_fold_{fold}"
+
+    # Define num of epoch for each CL phase
+    n_epochs = [10, 10]
+    assert training_args.num_train_epochs == sum(n_epochs)
+
+    if um:
+        train_datasets = uniform_mixing_tts([train_dataset, synth_train_dataset], 0.2)
+    else:
+        train_datasets = [train_dataset, concatenate_datasets([train_dataset, synth_train_dataset])]
+
+    for i, (n_epoch, current_train_dataset) in enumerate(zip(n_epochs, train_datasets)):
         #  update training arg
         training_args.num_train_epochs = n_epoch
 
@@ -287,16 +429,21 @@ if __name__ == "__main__":
     parser.add_argument("--augment", type=str, default=None,help="Augmentation method, ignore if resample is set.")
     parser.add_argument("--resample", type=str, default=None,help="Resampling criteria. If set, augment arg will be ignored.")
     parser.add_argument("--ccl_training", help="Run class-wise curriculum learning or not", action="store_true")
+    parser.add_argument("--use_synth", help="Use synthesised data or not", action="store_true")
+    parser.add_argument("--cl", help="Run curriculum learning or not", action="store_true")
     parser.add_argument("--test", help="Test run", action="store_true")
-    parser.add_argument("--fold", type=int, default=None,
-                        help="Fold number, 0-3")
+    parser.add_argument("--um", help="Uniform mixing", action="store_true")
+    parser.add_argument("--fold", type=int, default=None,help="Fold number, 0-3")
+
     args = parser.parse_args()
 
-    assert args.lang in ["fi", "sv"], f"Lang must be either fi or sv, got {args.lang}."
+    assert args.lang in [
+        "fi", "sv"], f"Lang must be either fi or sv, got {args.lang}."
     assert args.fold in range(4), f"Expect fold 0-3, got {args.fold}"
 
     # 1. Configs and arguments
-    device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device: torch.device = torch.device(
+        "cuda" if torch.cuda.is_available() else "cpu")
 
     with open('config.yml', 'r') as file:
         train_config = yaml.safe_load(file)
@@ -324,6 +471,10 @@ if __name__ == "__main__":
     # 2. Load csv file containing data summary
     # -- columns: file_path, split, normalised transcripts
     df: pd.DataFrame = get_df(args.lang, data_args, args.resample)
+    if args.use_synth:
+        # load df of synthesised dataset if it'll be used for training
+        df_synth: pd.DataFrame = get_df(
+            args.lang, data_args, args.resample, True)
     if args.test:
         df = df[:30]
         training_args.num_train_epochs = 1
@@ -340,8 +491,13 @@ if __name__ == "__main__":
 
     print("LOAD DATA")
     # -- split dataset into train and validation
-    train_dataset: Dataset = Dataset.from_pandas(df[df.split != args.fold])
-    print(train_dataset)
+    train_df = df[df.split != args.fold]
+    if args.use_synth:
+        synth_train_df = df_synth[df_synth.split != args.fold]
+        if not args.cl:
+            train_df = pd.concat([train_df, synth_train_df]).sample(frac=1)
+
+    train_dataset: Dataset = Dataset.from_pandas(train_df)
     val_dataset: Dataset = Dataset.from_pandas(df[df.split == args.fold])
     train_dataset.set_format("pt")
     val_dataset.set_format("pt")
@@ -373,8 +529,15 @@ if __name__ == "__main__":
     if args.ccl_training:
         print("RUNNING CCL")
         ccl_args = CCLArguments(**train_config["ccl_args"])
-        run_ccl_train(args.fold, processor, model,
-                      train_dataset, val_dataset, training_args, ccl_args)
+        run_ccl_train(args.fold, processor, model, train_dataset,val_dataset, training_args, ccl_args, args.um)
+    elif args.cl and args.use_synth:
+        print("LOAD SYNTHESISED DATA")
+        synth_train_dataset = Dataset.from_pandas(synth_train_df)
+        synth_train_dataset.set_format("pt")
+        synth_train_dataset = load_speech("train", synth_train_dataset, processor, data_args, remove_columns=["file_path", "split"])
+        synth_train_dataset = extract_features("train", synth_train_dataset, processor, data_args, training_args)
+
+        print("RUNNING CL WITH SYNTHESISED DATA")
+        run_cl_with_synthesised_data(args.fold, processor, model, train_dataset, synth_train_dataset, val_dataset, training_args, args.um)
     else:
-        run_train(args.fold, processor, model,
-                  train_dataset, val_dataset, training_args)
+        run_train(args.fold, processor, model,train_dataset, val_dataset, training_args)

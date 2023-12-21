@@ -10,7 +10,7 @@ import pandas as pd
 from numpy import argmax
 from functools import partial
 
-from datasets import Dataset
+from datasets import Dataset, concatenate_datasets
 from transformers import Wav2Vec2Processor, AutoModelForAudioClassification, TrainingArguments, Trainer
 from augmentations import apply_tranformations, transform_names, AugmentArguments, resample, ratings, CCLArguments
 
@@ -37,10 +37,8 @@ def get_df(csv_path, drop_classes: List[int]) -> pd.DataFrame:
         drop_classes (List[int]): sparse classes to remove 
     """
     # load df from csv
-    df = pd.read_csv(csv_path, usecols=[
-                     'recording_path', 'cefr_mean', 'split'])
-    df = df.rename(
-        columns={'recording_path': 'file_path', 'cefr_mean': 'label'})
+    df = pd.read_csv(csv_path, usecols=['recording_path', 'cefr_mean', 'split'])
+    df = df.rename(columns={'recording_path': 'file_path', 'cefr_mean': 'label'})
 
     # drop sparse classes
     for c in drop_classes:
@@ -50,8 +48,7 @@ def get_df(csv_path, drop_classes: List[int]) -> pd.DataFrame:
 
     # do rounding if neccessary
     if df.label.dtype != int:
-        logger.warning(
-            "Rounding required. Ensure that the correct dataset was loaded.")
+        logger.warning("Rounding required. Ensure that the correct dataset was loaded.")
         df["label"] = df["label"].apply(true_round)
 
     # shift classes so they start from 0
@@ -84,21 +81,14 @@ def compute_metrics(pred: EvalPrediction, print_eval: bool = False) -> Dict:
     pred_logits = pred.predictions
     pred_ids = argmax(pred_logits, axis=-1)
 
-    precision = precision_metric.compute(
-        predictions=pred_ids, references=pred.label_ids, average="macro")
-    recall = recall_metric.compute(
-        predictions=pred_ids, references=pred.label_ids, average="macro")
-    f1 = f1_metric.compute(predictions=pred_ids,
-                           references=pred.label_ids, average="macro")
-    spearman = spearmanr_metric.compute(
-        predictions=pred_ids, references=pred.label_ids)
+    precision = precision_metric.compute(predictions=pred_ids, references=pred.label_ids, average="macro")
+    recall = recall_metric.compute(predictions=pred_ids, references=pred.label_ids, average="macro")
+    f1 = f1_metric.compute(predictions=pred_ids, references=pred.label_ids, average="macro")
+    spearman = spearmanr_metric.compute(predictions=pred_ids, references=pred.label_ids)
 
-    precision_weighted = precision_metric.compute(
-        predictions=pred_ids, references=pred.label_ids, average="weighted")
-    recall_weighted = recall_metric.compute(
-        predictions=pred_ids, references=pred.label_ids, average="weighted")
-    f1_weighted = f1_metric.compute(
-        predictions=pred_ids, references=pred.label_ids, average="weighted")
+    precision_weighted = precision_metric.compute(predictions=pred_ids, references=pred.label_ids, average="weighted")
+    recall_weighted = recall_metric.compute(predictions=pred_ids, references=pred.label_ids, average="weighted")
+    f1_weighted = f1_metric.compute(predictions=pred_ids, references=pred.label_ids, average="weighted")
 
     if print_eval and logger.isEnabledFor(logging.DEBUG):
         for pred, label in zip(pred_ids, pred.label_ids):
@@ -136,20 +126,62 @@ def run_train(processor: Wav2Vec2Processor,
     compute_metrics(predictions, print_eval=True)
 
 
+def uniform_mixing(datasets: List[Dataset], swap_proportion: float, num_of_unique_classes: int) -> List[Dataset]:
+    """Swap part of the first dataset with the other datasets
+
+    Args:
+        datasets (List[Dataset]): Original list of datasets
+
+    Returns:
+        List[Dataset]: List of datasets after uniform mixing
+    """
+    assert len(datasets) == 3
+    assert swap_proportion > 0 and swap_proportion < 1
+
+    easy_set, medium_set, hard_set = datasets
+    assert len(hard_set.unique("label")) != num_of_unique_classes, f"Do not combine the classes of different difficulty levels."
+    print("Perform Uniform Mixing")
+    # split the easy set 80% - 20%
+    easy_set_split = easy_set.train_test_split(test_size=swap_proportion, seed=201123)
+
+    # further split the 20% easy set into 50% - 50%
+    easy_set_replace = easy_set_split["test"].train_test_split(test_size=0.5, seed=201123)
+
+    # split the medium and hard set into 90% - 10%
+    medium_set_split = medium_set.train_test_split(test_size=swap_proportion/2, seed=201123)
+    hard_set_split = hard_set.train_test_split(test_size=swap_proportion/2, seed=201123)
+
+    # final sets 
+    easy_set = concatenate_datasets([easy_set_split["train"], medium_set_split["test"], hard_set_split["test"]]).shuffle()
+    medium_set = concatenate_datasets([medium_set_split["train"], easy_set_replace["train"]]).shuffle()
+    hard_set = concatenate_datasets([hard_set_split["train"], easy_set_replace["test"]]).shuffle()
+
+    return [
+        easy_set, 
+        concatenate_datasets([easy_set, medium_set]).shuffle(),
+        concatenate_datasets([easy_set, medium_set, hard_set]).shuffle()
+    ]
+
+
 def run_ccl_train(processor: Wav2Vec2Processor,
                   model: AutoModelForAudioClassification,
                   train_dataset: Dataset,
                   eval_dataset: Dataset,
                   training_args: TrainingArguments,
-                  ccl_args: CCLArguments):
+                  ccl_args: CCLArguments, 
+                  um:bool=False):
 
     logger.debug(f"Class difficulty order: {ccl_args.difficulty_order}")
     logger.debug(f"n_epochs for each CCL phase: {ccl_args.n_epochs}")
     assert training_args.num_train_epochs == sum(ccl_args.n_epochs)
+    # assert all([score in ccl_args.difficulty_order[-1] for score in train_dataset.unique("label")])
 
     train_datasets = [train_dataset.filter(
         lambda example: example["label"] in scores
     ) for scores in ccl_args.difficulty_order]
+    
+    if um:
+        train_datasets = uniform_mixing(train_datasets, 0.2, len(train_dataset.unique("label")))
 
     for i, (n_epoch, current_train_set) in enumerate(zip(ccl_args.n_epochs, train_datasets)):
         print(f"Training with classes: {ccl_args.difficulty_order[i]}")
@@ -179,23 +211,16 @@ def run_ccl_train(processor: Wav2Vec2Processor,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lang", type=str, default="fi",
-                        help="Either fi or sv")
-    parser.add_argument("--partial_model_path", type=str,
-                        default=None, help="Partial path to trained model")
-    parser.add_argument("--resample", type=str, default=None,
-                        help="Resampling criteria. If set, augment arg will be ignored.")
-    parser.add_argument("--augment", type=str, default=None,
-                        help="Augmentation method, ignored if resample is set.")
-    parser.add_argument("--fold", type=int, default=None,
-                        help="Fold number, [0,3]")
-    parser.add_argument("--resume_from", type=str,
-                        default=None, help="Checkpoint to resume from")
-    parser.add_argument("--epoch", type=int, default=None,
-                        help="Set epoch to value different from config")
+    parser.add_argument("--lang", type=str, default="fi",help="Either fi or sv")
+    parser.add_argument("--partial_model_path", type=str,default=None, help="Partial path to trained model")
+    parser.add_argument("--resample", type=str, default=None,help="Resampling criteria. If set, augment arg will be ignored.")
+    parser.add_argument("--augment", type=str, default=None,help="Augmentation method, ignored if resample is set.")
+    parser.add_argument("--fold", type=int, default=None,help="Fold number, [0,3]")
+    parser.add_argument("--resume_from", type=str,default=None, help="Checkpoint to resume from")
+    parser.add_argument("--epoch", type=int, default=None, help="Set epoch to value different from config")
     parser.add_argument("--test", help="Test run", action="store_true")
-    parser.add_argument(
-        "--ccl_training", help="Run class-wise curriculum learning or not", action="store_true")
+    parser.add_argument("--ccl_training", help="Run class-wise curriculum learning or not", action="store_true")
+    parser.add_argument("--um", help="Set uniform mixing or not", action="store_true")
 
     args = parser.parse_args()
     assert args.lang in ["fi", "sv"], f"Expected fi or sv, got {args.lang}"
@@ -303,7 +328,6 @@ if __name__ == "__main__":
     if args.ccl_training:
         print("RUNNING CCL")
         ccl_args = CCLArguments(**config["ccl_args"])
-        run_ccl_train(processor, model, train_dataset,
-                      eval_dataset, training_args, ccl_args)
+        run_ccl_train(processor, model, train_dataset,eval_dataset, training_args, ccl_args, args.um)
     else:
         run_train(processor, model, train_dataset, eval_dataset, training_args)

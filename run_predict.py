@@ -35,6 +35,8 @@ if __name__ == "__main__":
     parser.add_argument("--fold", type=int, default=None, help="Fold number, 0-3")
     parser.add_argument("--partial_model_path", type=str, default=None, help="Path to model")
     parser.add_argument("--lang", type=str, default="fi", help="fi or sv")
+    parser.add_argument("--use_pretrained", action="store_true", help="Use the pretrained model for prediction")
+
     args = parser.parse_args()
     assert args.fold in range(4), f"Expect fold 0-3, got {args.fold}"
 
@@ -43,8 +45,8 @@ if __name__ == "__main__":
     data_args = DataArguments(**train_config["data_args"])
     model_args = ModelArguments(**train_config["model_args"])
     
-    model_path = f"{args.partial_model_path}{args.fold}"
     pretrained_path = model_args.fi_pretrained if args.lang == "fi" else model_args.sv_pretrained
+    model_path = pretrained_path if args.use_pretrained else f"{args.partial_model_path}{args.fold}"
 
     if device != torch.device("cuda"):
         train_config["training_args"]["fp16"] = False
@@ -67,7 +69,8 @@ if __name__ == "__main__":
                             "transcript_normalized":"text"})
     
     # 3. Get valiation set, load speech and extract features 
-    val_dataset = Dataset.from_pandas(df[df.split==args.fold])
+    df = df if args.use_pretrained else df[df.split==args.fold]
+    val_dataset = Dataset.from_pandas(df)
     val_dataset.set_format("pt")
 
     print("Load speech")
@@ -81,11 +84,12 @@ if __name__ == "__main__":
     get_prediction_partial = partial(get_prediction, processor, model, device)
     val_dataset = val_dataset.map(
         get_prediction_partial,
-        remove_columns=["__index_level_0__", "speech", "sampling_rate", "input_values", "labels"], 
+        remove_columns=["speech", "sampling_rate", "input_values", "labels"], 
         num_proc=1 if device == torch.device("cuda") else 6)
     print(f"Finnished in {print_time(start)}")
     
     # 5. Save dataset as csv file 
     print("Save csv")
-    val_dataset.to_csv(f"finnish_ASR_transcrip_fold{args.fold}.csv")
+    csv_name = f"finnish_ASR_transcrip_fold{args.fold}.csv" if args.lang == "fi" else f"swedish_ASR_transcrip_fold{args.fold}.csv"
+    val_dataset.to_csv(csv_name)
     print("All done")

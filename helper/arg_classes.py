@@ -2,9 +2,11 @@ class DataArguments(object):
     def __init__(self, 
                  csv_fi: str = "finnish_df.csv", 
                  csv_sv: str = "swedish_df.csv", 
+                 csv_fi_synth: str = "/scratch/work/lunt1/TTS/csv_fi_synth.csv",
                  target_feature_extractor_sampling_rate: int = 16000) -> None:
         self.csv_fi = csv_fi
         self.csv_sv = csv_sv
+        self.csv_fi_synth = csv_fi_synth
         self.target_feature_extractor_sampling_rate = target_feature_extractor_sampling_rate
 
 class ModelArguments(object):
