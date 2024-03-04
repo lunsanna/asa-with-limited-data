@@ -105,7 +105,8 @@ def run_train(processor: Wav2Vec2Processor,
               model: AutoModelForAudioClassification,
               train_dataset: Dataset,
               eval_dataset: Dataset,
-              training_args: TrainingArguments):
+              training_args: TrainingArguments) -> None:
+    """ Initialise trainer and run training."""
 
     trainer = Trainer(
         model=model,
@@ -169,8 +170,9 @@ def run_ccl_train(processor: Wav2Vec2Processor,
                   eval_dataset: Dataset,
                   training_args: TrainingArguments,
                   ccl_args: CCLArguments, 
-                  um:bool=False):
-
+                  um:bool=False) -> None:
+    """Initialise trainer and run CCL training."""
+    
     logger.debug(f"Class difficulty order: {ccl_args.difficulty_order}")
     logger.debug(f"n_epochs for each CCL phase: {ccl_args.n_epochs}")
     assert training_args.num_train_epochs == sum(ccl_args.n_epochs)
