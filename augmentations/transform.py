@@ -287,7 +287,7 @@ def resample(train_dataset: Dataset,
     # calculate samlping rate
     group_counts = Counter(ratings)
     n_group = len(group_counts)
-    n_copy = 2.8 # double the dataset
+    n_copy = augment_args.resample.resample_factor # default 2, i.e. double the sample size 
     avg_n_samples_per_gp = len(train_copy)*n_copy/n_group
     n_samples = [(group, avg_n_samples_per_gp - count) for group, count in group_counts.items()]
     assert all([n > 0 for _, n in n_samples]), f"This calculation does not work. Might have to re-design."
@@ -295,8 +295,9 @@ def resample(train_dataset: Dataset,
     resample_weights = [weights[r] for r in ratings]
 
     # resample data based on weights
-    n = random.choices(range(len(train_copy)), weights=resample_weights, k=len(train_copy))
+    n = random.choices(range(len(train_copy)), weights=resample_weights, k=int((n_copy-1) * len(train_copy)))
     train_copy = train_copy.select(n) 
+    logger.debug(f"{len(train_copy)} instances resampled, final data size: {len(train_copy) + len(train_dataset)}")
 
     # augment only the copied dataset, using random_transforms
     if augment_args.resample.do_augment:

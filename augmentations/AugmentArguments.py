@@ -39,9 +39,10 @@ class TempoPerturbArgs(object):
         assert isinstance(self.perturbation_factors, list) and len(self.perturbation_factors) > 0
 
 class ResampleArgs(object):
-    def __init__(self, do_augment: bool = True, max_num_of_transforms: int = 2) -> None:
+    def __init__(self, do_augment: bool = True, resample_factor: float = 2, max_num_of_transforms: int = 2) -> None:
         self.do_augment = do_augment
         self.max_num_of_transforms = max_num_of_transforms
+        self.resample_factor = resample_factor
 
 class AugmentArguments(object):
     def __init__(self, 

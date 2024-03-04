@@ -5,6 +5,8 @@
 
 import pandas as pd
 import numpy as np
+import copy, random
+from collections import Counter
 from sklearn.metrics import precision_score, recall_score, f1_score, cohen_kappa_score
 
 def add_asa_result_to_df(df, output_path, drop_class=[]):
@@ -66,3 +68,27 @@ def get_asa_metrics(y_true, y_pred, average="macro"):
     kappa = cohen_kappa_score(y1=y_true, y2=y_pred, weights="quadratic")
     
     return precision,recall, f1, kappa
+
+def resample(train_dataset,
+             alpha=2, # 2 means doubling the dataset
+             criterion: str = "rating"):
+    """Resample data to balanced out the data based on the chosen rating (default = cefr_mean)"""
+    
+    train_copy = copy.deepcopy(train_dataset) # always create a copy 
+    ratings = train_copy[criterion].tolist()
+
+    # calculate samlping rate
+    group_counts = Counter(ratings)
+    n_group = len(group_counts)
+    n_copy = alpha 
+    avg_n_samples_per_gp = len(train_copy)*n_copy/n_group
+    n_samples = [(group, avg_n_samples_per_gp - count) for group, count in group_counts.items()]
+    assert all([n > 0 for _, n in n_samples]), f"Please increase alpha."
+    weights = {group: round(100*n/group_counts[group]) for group, n in n_samples}
+    resample_weights = [weights[r] for r in ratings]
+
+    # resample data based on weights
+    n = random.choices(range(len(train_copy)), weights=resample_weights, k=int(len(train_copy)*(alpha-1)))
+    train_copy = train_copy.iloc[n]
+
+    return train_copy
