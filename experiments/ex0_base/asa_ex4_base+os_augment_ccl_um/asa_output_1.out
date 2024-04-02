@@ -1,0 +1,1297 @@
+******** Training fold 1 ********
+11/13/2023 03:05:38 - DEBUG - __main__ -   Processor loaded. CPU mem usage: 0.38G.  Cuda 0: memory acclocated: 0 G.
+11/13/2023 03:05:42 - DEBUG - __main__ -   Model loaded. CPU mem usage: 1.99G.  Cuda 0: memory acclocated: 0 G.
+Wav2Vec2ForSequenceClassification(
+  (wav2vec2): Wav2Vec2Model(
+    (feature_extractor): Wav2Vec2FeatureEncoder(
+      (conv_layers): ModuleList(
+        (0): Wav2Vec2LayerNormConvLayer(
+          (conv): Conv1d(1, 512, kernel_size=(10,), stride=(5,))
+          (layer_norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+          (activation): GELUActivation()
+        )
+        (1-4): 4 x Wav2Vec2LayerNormConvLayer(
+          (conv): Conv1d(512, 512, kernel_size=(3,), stride=(2,))
+          (layer_norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+          (activation): GELUActivation()
+        )
+        (5-6): 2 x Wav2Vec2LayerNormConvLayer(
+          (conv): Conv1d(512, 512, kernel_size=(2,), stride=(2,))
+          (layer_norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+          (activation): GELUActivation()
+        )
+      )
+    )
+    (feature_projection): Wav2Vec2FeatureProjection(
+      (layer_norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      (projection): Linear(in_features=512, out_features=1024, bias=True)
+      (dropout): Dropout(p=0.1, inplace=False)
+    )
+    (encoder): Wav2Vec2EncoderStableLayerNorm(
+      (pos_conv_embed): Wav2Vec2PositionalConvEmbedding(
+        (conv): Conv1d(1024, 1024, kernel_size=(128,), stride=(1,), padding=(64,), groups=16)
+        (padding): Wav2Vec2SamePadLayer()
+        (activation): GELUActivation()
+      )
+      (layer_norm): LayerNorm((1024,), eps=1e-05, elementwise_affine=True)
+      (dropout): Dropout(p=0.1, inplace=False)
+      (layers): ModuleList(
+        (0-23): 24 x Wav2Vec2EncoderLayerStableLayerNorm(
+          (attention): Wav2Vec2Attention(
+            (k_proj): Linear(in_features=1024, out_features=1024, bias=True)
+            (v_proj): Linear(in_features=1024, out_features=1024, bias=True)
+            (q_proj): Linear(in_features=1024, out_features=1024, bias=True)
+            (out_proj): Linear(in_features=1024, out_features=1024, bias=True)
+          )
+          (dropout): Dropout(p=0.1, inplace=False)
+          (layer_norm): LayerNorm((1024,), eps=1e-05, elementwise_affine=True)
+          (feed_forward): Wav2Vec2FeedForward(
+            (intermediate_dropout): Dropout(p=0.0, inplace=False)
+            (intermediate_dense): Linear(in_features=1024, out_features=4096, bias=True)
+            (intermediate_act_fn): GELUActivation()
+            (output_dense): Linear(in_features=4096, out_features=1024, bias=True)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+          )
+          (final_layer_norm): LayerNorm((1024,), eps=1e-05, elementwise_affine=True)
+        )
+      )
+    )
+  )
+  (projector): Linear(in_features=1024, out_features=256, bias=True)
+  (classifier): Linear(in_features=256, out_features=7, bias=True)
+)
+11/13/2023 03:06:14 - DEBUG - __main__ -   Speech loaded. N_train=1580, N_eval=532. CPU mem usage: 6.14G.  Cuda 0: memory acclocated: 0 G.
+11/13/2023 03:06:48 - DEBUG - __main__ -   Feature extracted. Duration: 0:00:34 CPU mem usage: 9.18G.  Cuda 0: memory acclocated: 0 G.
+11/13/2023 03:06:48 - DEBUG - augmentations.transform -   Apply augmentation to oversampled instances
+11/13/2023 03:06:48 - DEBUG - augmentations.transform -   Max transforms: 2
+11/13/2023 03:11:22 - DEBUG - augmentations.transform -   Training set (N=1580): augmented training data added. Duration: 0:04:33
+11/13/2023 03:11:22 - DEBUG - augmentations.transform -   Training set (N=3160): data resampled. Duration: 0:04:33
+11/13/2023 03:11:22 - DEBUG - urllib3.connectionpool -   Starting new HTTPS connection (1): s3.amazonaws.com:443
+11/13/2023 03:11:22 - DEBUG - urllib3.connectionpool -   https://s3.amazonaws.com:443 "HEAD /datasets.huggingface.co/datasets/metrics/evaluate-metric/precision/evaluate-metric/precision.py HTTP/1.1" 404 0
+11/13/2023 03:11:22 - DEBUG - urllib3.connectionpool -   Starting new HTTPS connection (1): huggingface.co:443
+11/13/2023 03:11:23 - DEBUG - urllib3.connectionpool -   https://huggingface.co:443 "HEAD /spaces/evaluate-metric/precision/resolve/v0.4.0/precision.py HTTP/1.1" 200 0
+11/13/2023 03:11:23 - DEBUG - urllib3.connectionpool -   Starting new HTTPS connection (1): s3.amazonaws.com:443
+11/13/2023 03:11:23 - DEBUG - urllib3.connectionpool -   https://s3.amazonaws.com:443 "HEAD /datasets.huggingface.co/datasets/metrics/evaluate-metric/recall/evaluate-metric/recall.py HTTP/1.1" 404 0
+11/13/2023 03:11:23 - DEBUG - urllib3.connectionpool -   Starting new HTTPS connection (1): huggingface.co:443
+11/13/2023 03:11:23 - DEBUG - urllib3.connectionpool -   https://huggingface.co:443 "HEAD /spaces/evaluate-metric/recall/resolve/v0.4.0/recall.py HTTP/1.1" 200 0
+11/13/2023 03:11:23 - DEBUG - urllib3.connectionpool -   Starting new HTTPS connection (1): s3.amazonaws.com:443
+11/13/2023 03:11:24 - DEBUG - urllib3.connectionpool -   https://s3.amazonaws.com:443 "HEAD /datasets.huggingface.co/datasets/metrics/evaluate-metric/f1/evaluate-metric/f1.py HTTP/1.1" 404 0
+11/13/2023 03:11:24 - DEBUG - urllib3.connectionpool -   Starting new HTTPS connection (1): huggingface.co:443
+11/13/2023 03:11:25 - DEBUG - urllib3.connectionpool -   https://huggingface.co:443 "HEAD /spaces/evaluate-metric/f1/resolve/v0.4.0/f1.py HTTP/1.1" 200 0
+11/13/2023 03:11:25 - DEBUG - urllib3.connectionpool -   Starting new HTTPS connection (1): s3.amazonaws.com:443
+11/13/2023 03:11:25 - DEBUG - urllib3.connectionpool -   https://s3.amazonaws.com:443 "HEAD /datasets.huggingface.co/datasets/metrics/evaluate-metric/spearmanr/evaluate-metric/spearmanr.py HTTP/1.1" 404 0
+11/13/2023 03:11:25 - DEBUG - urllib3.connectionpool -   Starting new HTTPS connection (1): huggingface.co:443
+11/13/2023 03:11:26 - DEBUG - urllib3.connectionpool -   https://huggingface.co:443 "HEAD /spaces/evaluate-metric/spearmanr/resolve/v0.4.0/spearmanr.py HTTP/1.1" 200 0
+RUNNING CCL
+11/13/2023 03:11:26 - DEBUG - __main__ -   Class difficulty order: [[1, 2], [5, 4], [3, 0, 6]]
+11/13/2023 03:11:26 - DEBUG - __main__ -   n_epochs for each CCL phase: [3, 3, 4]
+Perform Uniform Mixing
+Training with classes: [1, 2]
+11/13/2023 03:12:04 - DEBUG - __main__ -   Training phase 0 starts now. CPU mem usage: 14.63G.  Cuda 0: memory acclocated: 2 G.
+11/13/2023 03:12:04 - DEBUG - helper.classes -   ----------- Starting epoch 1 -----------
+11/13/2023 03:22:15 - DEBUG - helper.classes -   Epoch 1.0 completed, Duration: 0:10:10 Mem usage: CPU mem usage: 14.90G.  Cuda 0: memory acclocated: 28 G.
+11/13/2023 03:24:10 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 03:24:10 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 03:24:10 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 03:24:10 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/spearmanr/default/default_experiment-1-0.arrow
+11/13/2023 03:24:10 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 03:24:10 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 03:24:10 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+{'eval_loss': 1.6873724460601807, 'eval_precision': 0.24089065326864795, 'eval_recall': 0.3039139685904568, 'eval_f1': 0.24779103564070715, 'eval_spearmanr': 0.7106303826114077, 'eval_precision_weighted': 0.29573696027193896, 'eval_recall_weighted': 0.35902255639097747, 'eval_f1_weighted': 0.3060363738820902, 'eval_runtime': 115.2182, 'eval_samples_per_second': 4.617, 'eval_steps_per_second': 2.309, 'epoch': 1.0}
+11/13/2023 03:24:16 - DEBUG - helper.classes -   ----------- Starting epoch 2.0 -----------
+{'loss': 1.3859, 'learning_rate': 2.1569858712715856e-05, 'epoch': 1.06}
+11/13/2023 03:34:20 - DEBUG - helper.classes -   Epoch 2.0 completed, Duration: 0:10:03 Mem usage: CPU mem usage: 14.92G.  Cuda 0: memory acclocated: 18 G.
+11/13/2023 03:36:14 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 03:36:14 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 03:36:14 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 03:36:14 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/spearmanr/default/default_experiment-1-0.arrow
+11/13/2023 03:36:14 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 03:36:14 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 03:36:14 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+{'eval_loss': 1.6719355583190918, 'eval_precision': 0.1602573250924899, 'eval_recall': 0.307491013062605, 'eval_f1': 0.1867507407077428, 'eval_spearmanr': 0.7734093677679477, 'eval_precision_weighted': 0.20945277972461315, 'eval_recall_weighted': 0.34022556390977443, 'eval_f1_weighted': 0.22397284276323043, 'eval_runtime': 114.0534, 'eval_samples_per_second': 4.664, 'eval_steps_per_second': 2.332, 'epoch': 2.0}
+11/13/2023 03:36:20 - DEBUG - helper.classes -   ----------- Starting epoch 3.0 -----------
+{'loss': 1.1328, 'learning_rate': 9.795918367346939e-06, 'epoch': 2.12}
+11/13/2023 03:46:28 - DEBUG - helper.classes -   Epoch 3.0 completed, Duration: 0:10:07 Mem usage: CPU mem usage: 14.92G.  Cuda 0: memory acclocated: 18 G.
+11/13/2023 03:48:22 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 03:48:22 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 03:48:22 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 03:48:22 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/spearmanr/default/default_experiment-1-0.arrow
+11/13/2023 03:48:22 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 03:48:22 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 03:48:22 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+{'eval_loss': 1.6682913303375244, 'eval_precision': 0.2176045406308564, 'eval_recall': 0.34253877215861855, 'eval_f1': 0.21558321294155386, 'eval_spearmanr': 0.7745434712138906, 'eval_precision_weighted': 0.2736306857411428, 'eval_recall_weighted': 0.2819548872180451, 'eval_f1_weighted': 0.24296894608902483, 'eval_runtime': 114.2708, 'eval_samples_per_second': 4.656, 'eval_steps_per_second': 2.328, 'epoch': 3.0}
+{'train_runtime': 2188.9696, 'train_samples_per_second': 1.292, 'train_steps_per_second': 0.647, 'train_loss': 1.2022520377811066, 'epoch': 3.0}
+11/13/2023 03:48:34 - INFO - __main__ -   Training completed. Duration: 0:36:29
+Training with classes: [5, 4]
+11/13/2023 03:48:34 - DEBUG - __main__ -   Training phase 1 starts now. CPU mem usage: 14.94G.  Cuda 0: memory acclocated: 18 G.
+11/13/2023 03:48:34 - DEBUG - helper.classes -   ----------- Starting epoch 1 -----------
+{'loss': 1.1789, 'learning_rate': 2.743700787401575e-05, 'epoch': 0.53}
+11/13/2023 04:14:55 - DEBUG - helper.classes -   Epoch 1.0 completed, Duration: 0:26:21 Mem usage: CPU mem usage: 14.73G.  Cuda 0: memory acclocated: 18 G.
+11/13/2023 04:16:50 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 04:16:50 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 04:16:50 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 04:16:50 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/spearmanr/default/default_experiment-1-0.arrow
+11/13/2023 04:16:50 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 04:16:50 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 04:16:50 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+{'eval_loss': 1.916802167892456, 'eval_precision': 0.2351250703956625, 'eval_recall': 0.31348725888783624, 'eval_f1': 0.22843800836500644, 'eval_spearmanr': 0.7668329544249032, 'eval_precision_weighted': 0.30631965768959196, 'eval_recall_weighted': 0.3815789473684211, 'eval_f1_weighted': 0.2900906814826359, 'eval_runtime': 114.2245, 'eval_samples_per_second': 4.657, 'eval_steps_per_second': 2.329, 'epoch': 1.0}
+11/13/2023 04:16:57 - DEBUG - helper.classes -   ----------- Starting epoch 2.0 -----------
+{'loss': 1.0673, 'learning_rate': 2.1531496062992127e-05, 'epoch': 1.06}
+{'loss': 0.984, 'learning_rate': 1.5625984251968506e-05, 'epoch': 1.59}
+11/13/2023 04:42:34 - DEBUG - helper.classes -   Epoch 2.0 completed, Duration: 0:25:37 Mem usage: CPU mem usage: 14.63G.  Cuda 0: memory acclocated: 18 G.
+11/13/2023 04:44:28 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 04:44:28 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 04:44:28 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 04:44:28 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/spearmanr/default/default_experiment-1-0.arrow
+11/13/2023 04:44:28 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 04:44:28 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 04:44:28 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+{'eval_loss': 1.9395744800567627, 'eval_precision': 0.22462209400053093, 'eval_recall': 0.32794805361659013, 'eval_f1': 0.2556489931145067, 'eval_spearmanr': 0.7847811692574554, 'eval_precision_weighted': 0.2912338271082836, 'eval_recall_weighted': 0.39473684210526316, 'eval_f1_weighted': 0.3207805936699062, 'eval_runtime': 114.2324, 'eval_samples_per_second': 4.657, 'eval_steps_per_second': 2.329, 'epoch': 2.0}
+11/13/2023 04:44:34 - DEBUG - helper.classes -   ----------- Starting epoch 3.0 -----------
+{'loss': 0.9833, 'learning_rate': 9.720472440944883e-06, 'epoch': 2.13}
+{'loss': 0.9535, 'learning_rate': 3.81496062992126e-06, 'epoch': 2.66}
+11/13/2023 05:10:59 - DEBUG - helper.classes -   Epoch 3.0 completed, Duration: 0:26:25 Mem usage: CPU mem usage: 14.63G.  Cuda 0: memory acclocated: 18 G.
+11/13/2023 05:12:54 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 05:12:54 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 05:12:54 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 05:12:54 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/spearmanr/default/default_experiment-1-0.arrow
+11/13/2023 05:12:54 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 05:12:54 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 05:12:54 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+{'eval_loss': 2.030564785003662, 'eval_precision': 0.21717969601585674, 'eval_recall': 0.3166188716608084, 'eval_f1': 0.25030437566750285, 'eval_spearmanr': 0.7761158785202241, 'eval_precision_weighted': 0.28058620359290154, 'eval_recall_weighted': 0.38345864661654133, 'eval_f1_weighted': 0.3144890687238504, 'eval_runtime': 114.2487, 'eval_samples_per_second': 4.657, 'eval_steps_per_second': 2.328, 'epoch': 3.0}
+{'train_runtime': 5070.7129, 'train_samples_per_second': 1.113, 'train_steps_per_second': 0.557, 'train_loss': 1.0138298788688895, 'epoch': 3.0}
+11/13/2023 05:13:05 - INFO - __main__ -   Training completed. Duration: 1:24:31
+Training with classes: [3, 0, 6]
+11/13/2023 05:13:05 - DEBUG - __main__ -   Training phase 2 starts now. CPU mem usage: 14.63G.  Cuda 0: memory acclocated: 18 G.
+11/13/2023 05:13:05 - DEBUG - helper.classes -   ----------- Starting epoch 1 -----------
+{'loss': 1.5741, 'learning_rate': 2.3734177215189873e-05, 'epoch': 0.32}
+{'loss': 1.293, 'learning_rate': 2.805907172995781e-05, 'epoch': 0.63}
+{'loss': 1.1669, 'learning_rate': 2.5421940928270045e-05, 'epoch': 0.95}
+11/13/2023 05:57:45 - DEBUG - helper.classes -   Epoch 1.0 completed, Duration: 0:44:40 Mem usage: CPU mem usage: 14.65G.  Cuda 0: memory acclocated: 18 G.
+11/13/2023 05:59:39 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 05:59:39 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 05:59:39 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 05:59:39 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/spearmanr/default/default_experiment-1-0.arrow
+11/13/2023 05:59:39 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 05:59:39 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 05:59:39 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+{'eval_loss': 1.3700896501541138, 'eval_precision': 0.34925977360602606, 'eval_recall': 0.33094003282315937, 'eval_f1': 0.30263868479257966, 'eval_spearmanr': 0.7926799878159133, 'eval_precision_weighted': 0.44103623622814925, 'eval_recall_weighted': 0.4266917293233083, 'eval_f1_weighted': 0.38882197565903165, 'eval_runtime': 113.8703, 'eval_samples_per_second': 4.672, 'eval_steps_per_second': 2.336, 'epoch': 1.0}
+11/13/2023 05:59:45 - DEBUG - helper.classes -   ----------- Starting epoch 2.0 -----------
+{'loss': 0.9688, 'learning_rate': 2.278481012658228e-05, 'epoch': 1.27}
+{'loss': 0.9743, 'learning_rate': 2.0147679324894516e-05, 'epoch': 1.58}
+{'loss': 0.8948, 'learning_rate': 1.751054852320675e-05, 'epoch': 1.9}
+11/13/2023 06:44:17 - DEBUG - helper.classes -   Epoch 2.0 completed, Duration: 0:44:32 Mem usage: CPU mem usage: 14.65G.  Cuda 0: memory acclocated: 18 G.
+11/13/2023 06:46:12 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 06:46:13 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 06:46:13 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 06:46:13 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/spearmanr/default/default_experiment-1-0.arrow
+11/13/2023 06:46:14 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 06:46:14 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 06:46:14 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+{'eval_loss': 1.7770330905914307, 'eval_precision': 0.31959710044049533, 'eval_recall': 0.3663869031713328, 'eval_f1': 0.3139367165430742, 'eval_spearmanr': 0.804056957987203, 'eval_precision_weighted': 0.39922304069262554, 'eval_recall_weighted': 0.38533834586466165, 'eval_f1_weighted': 0.37634531251155195, 'eval_runtime': 116.7411, 'eval_samples_per_second': 4.557, 'eval_steps_per_second': 2.279, 'epoch': 2.0}
+11/13/2023 06:46:21 - DEBUG - helper.classes -   ----------- Starting epoch 3.0 -----------
+{'loss': 0.8278, 'learning_rate': 1.4873417721518987e-05, 'epoch': 2.22}
+{'loss': 0.7369, 'learning_rate': 1.2236286919831224e-05, 'epoch': 2.53}
+{'loss': 0.7162, 'learning_rate': 9.59915611814346e-06, 'epoch': 2.85}
+11/13/2023 07:31:09 - DEBUG - helper.classes -   Epoch 3.0 completed, Duration: 0:44:48 Mem usage: CPU mem usage: 14.65G.  Cuda 0: memory acclocated: 18 G.
+11/13/2023 07:33:04 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 07:33:04 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 07:33:04 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 07:33:04 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/spearmanr/default/default_experiment-1-0.arrow
+11/13/2023 07:33:04 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 07:33:04 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 07:33:04 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+{'eval_loss': 1.7262004613876343, 'eval_precision': 0.3506900244922059, 'eval_recall': 0.3544822139102786, 'eval_f1': 0.346380891846458, 'eval_spearmanr': 0.8044745182378004, 'eval_precision_weighted': 0.4396293978834991, 'eval_recall_weighted': 0.4417293233082707, 'eval_f1_weighted': 0.43458186790696024, 'eval_runtime': 115.3794, 'eval_samples_per_second': 4.611, 'eval_steps_per_second': 2.305, 'epoch': 3.0}
+11/13/2023 07:33:10 - DEBUG - helper.classes -   ----------- Starting epoch 4.0 -----------
+{'loss': 0.6531, 'learning_rate': 6.9620253164556965e-06, 'epoch': 3.16}
+{'loss': 0.6174, 'learning_rate': 4.324894514767933e-06, 'epoch': 3.48}
+{'loss': 0.6284, 'learning_rate': 1.6877637130801689e-06, 'epoch': 3.8}
+11/13/2023 08:17:46 - DEBUG - helper.classes -   Epoch 4.0 completed, Duration: 0:44:35 Mem usage: CPU mem usage: 14.66G.  Cuda 0: memory acclocated: 18 G.
+11/13/2023 08:19:40 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 08:19:40 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 08:19:40 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 08:19:40 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/spearmanr/default/default_experiment-1-0.arrow
+11/13/2023 08:19:40 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 08:19:40 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 08:19:41 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+{'eval_loss': 2.0096898078918457, 'eval_precision': 0.3431394865911935, 'eval_recall': 0.3557439759132027, 'eval_f1': 0.3459961691607898, 'eval_spearmanr': 0.8000488094208601, 'eval_precision_weighted': 0.43179327325402755, 'eval_recall_weighted': 0.42857142857142855, 'eval_f1_weighted': 0.42649822964436557, 'eval_runtime': 114.6599, 'eval_samples_per_second': 4.64, 'eval_steps_per_second': 2.32, 'epoch': 4.0}
+{'train_runtime': 11205.8509, 'train_samples_per_second': 1.128, 'train_steps_per_second': 0.564, 'train_loss': 0.9026331044450591, 'epoch': 4.0}
+11/13/2023 08:19:51 - INFO - __main__ -   Training completed. Duration: 3:06:46
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/spearmanr/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/spearmanr/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/precision/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/recall/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - fsspec.local -   open file: /home/lunt1/.cache/huggingface/metrics/f1/default/default_experiment-1-0.arrow
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 0
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 0
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 0
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 0
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 0
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 0
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 0
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 0
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 0
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 0
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 0
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 1
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 2
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 3
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 4
+11/13/2023 08:21:46 - DEBUG - __main__ -   label: 5
+11/13/2023 08:21:46 - DEBUG - __main__ -   pred: 6
