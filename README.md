@@ -1,4 +1,4 @@
-# wav2vec2-finetune
+# Oversampling, Augmentation and Curriculum Learning for Speaking Assessment with Limited Training Data
 
 This project is a refactored version of the `l2-speech-scoring-tools` developed by [Aalto-speech](https://github.com/aalto-speech/l2-speech-scoring-tools). The refactoring was done for my own understanding and practice. This project will be developed further for my master's thesis by adding data augmentation, oversampling and curriculum learning to alleviate challenges related to data scarcity and imbalance. 
 
